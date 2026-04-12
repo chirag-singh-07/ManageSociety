@@ -12,6 +12,8 @@ export function createSociety(input: {
   state?: string
   pincode?: string
   trialDays?: number
+  plan?: string
+  months?: number
 }) {
   return fetchJSON<{ ok: true; society: Society }>('POST', '/api/superadmin/societies', { body: input })
 }
@@ -28,8 +30,21 @@ export function updateSociety(
   return fetchJSON<{ ok: true; society: Society }>('PATCH', `/api/superadmin/societies/${id}`, { body: input })
 }
 
-export function listUsers() {
-  return fetchJSON<{ ok: true; users: User[] }>('GET', '/api/superadmin/users')
+export function deleteSociety(id: string) {
+  return fetchJSON<{ ok: true }>('DELETE', `/api/superadmin/societies/${id}`)
+}
+
+export function listUsers(params?: { page?: number; limit?: number; search?: string }) {
+  const query = new URLSearchParams()
+  if (params?.page) query.set('page', params.page.toString())
+  if (params?.limit) query.set('limit', params.limit.toString())
+  if (params?.search) query.set('search', params.search)
+  
+  return fetchJSON<{ ok: true; users: User[]; pagination: any }>('GET', `/api/superadmin/users?${query}`)
+}
+
+export function deleteUser(id: string) {
+  return fetchJSON<{ ok: true }>('DELETE', `/api/superadmin/users/${id}`)
 }
 
 export function createUser(input: {
@@ -57,5 +72,13 @@ export function subscribeSociety(id: string, input: { plan: string; months: numb
 
 export function listAuditLogs() {
   return fetchJSON<{ ok: true; logs: AuditLog[] }>('GET', '/api/superadmin/audit-logs')
+}
+
+export function getStats() {
+  return fetchJSON<{ ok: true; stats: any }>('GET', '/api/superadmin/stats')
+}
+
+export function getEarnings() {
+  return fetchJSON<{ ok: true; transactions: any[]; summary: any }>('GET', '/api/superadmin/earnings')
 }
 

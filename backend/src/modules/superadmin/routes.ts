@@ -18,8 +18,15 @@ superadminRouter.post(
   '/societies',
   asyncHandler(async (req, res) => {
     const input = createSocietySchema.parse(req.body);
-    const trialEndsAt =
-      input.trialDays > 0 ? new Date(Date.now() + input.trialDays * 24 * 60 * 60 * 1000) : null;
+    
+    let trialEndsAt: Date | null = null;
+    if (input.plan && input.months) {
+      trialEndsAt = new Date();
+      trialEndsAt.setMonth(trialEndsAt.getMonth() + input.months);
+    } else {
+      trialEndsAt = input.trialDays > 0 ? new Date(Date.now() + input.trialDays * 24 * 60 * 60 * 1000) : null;
+    }
+
     const society = await Society.create({
       name: input.name,
       address: input.address ?? '',
@@ -27,6 +34,7 @@ superadminRouter.post(
       state: input.state ?? '',
       pincode: input.pincode ?? '',
       trialEndsAt,
+      plan: input.plan || 'trial',
       status: 'active',
     });
 
@@ -83,9 +91,49 @@ superadminRouter.patch(
 
 superadminRouter.get(
   '/users',
-  asyncHandler(async (_req, res) => {
-    const users = await User.find({}).sort({ createdAt: -1 }).limit(500);
-    res.json({ ok: true, users });
+  asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const search = (req.query.search as string) || '';
+    
+    const query: any = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .populate('societyId', 'name')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip((page - 1) * limit)
+        .lean(),
+      User.countDocuments(query),
+    ]);
+
+    res.json({ 
+      ok: true, 
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  }),
+);
+
+superadminRouter.delete(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'BAD_ID', 'Invalid id');
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+    res.json({ ok: true });
   }),
 );
 
@@ -179,14 +227,27 @@ superadminRouter.post(
       { new: true }
     );
 
+    // Record the transaction for the earnings page
+    const monthPrice: Record<string, number> = { basic: 999, premium: 2499, enterprise: 4999 };
+    const price = (monthPrice[input.plan] || 999) * input.months;
+
+    await (await import('../billing/model')).Transaction.create({
+      societyId: society._id,
+      amount: price,
+      plan: input.plan,
+      months: input.months,
+      status: 'completed'
+    });
+
     await writeAuditLog({
+      // ... same audit log logic as before ...
       scope: 'global',
       actorId: req.tenant!.userId,
       actorRole: 'superadmin',
       action: 'society.subscribe',
       targetType: 'society',
       targetId: String(society._id),
-      metadata: { plan: input.plan, months: input.months, newExpiry },
+      metadata: { plan: input.plan, months: input.months, newExpiry, revenue: price },
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     });
@@ -196,12 +257,107 @@ superadminRouter.post(
 );
 
 superadminRouter.get(
-  '/audit-logs',
+  '/earnings',
   asyncHandler(async (_req, res) => {
-    const logs = await (await import('../audit/model')).AuditLog.find({ scope: 'global' })
+    const transactions = await (await import('../billing/model')).Transaction.find({})
+      .populate('societyId', 'name')
       .sort({ createdAt: -1 })
-      .limit(200);
-    res.json({ ok: true, logs });
+      .limit(100);
+    
+    const stats = await (await import('../billing/model')).Transaction.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const byPlan = await (await import('../billing/model')).Transaction.aggregate([
+      { $group: { _id: '$plan', revenue: { $sum: '$amount' }, count: { $sum: 1 } } }
+    ]);
+
+    res.json({ 
+      ok: true, 
+      transactions, 
+      summary: {
+        totalRevenue: stats[0]?.totalRevenue || 0,
+        totalTransactions: stats[0]?.count || 0,
+        byPlan
+      }
+    });
+  }),
+);
+
+superadminRouter.delete(
+  '/societies/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'BAD_ID', 'Invalid id');
+    
+    const society = await Society.findByIdAndDelete(req.params.id);
+    if (!society) throw new ApiError(404, 'NOT_FOUND', 'Society not found');
+
+    await writeAuditLog({
+      scope: 'global',
+      actorId: req.tenant!.userId,
+      actorRole: 'superadmin',
+      action: 'society.delete',
+      targetType: 'society',
+      targetId: req.params.id,
+      metadata: { name: society.name },
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.json({ ok: true });
+  }),
+);
+
+superadminRouter.get(
+  '/stats',
+  asyncHandler(async (_req, res) => {
+    const [
+      totalSocieties,
+      totalUsers,
+      activeSocieties,
+      expiringSocieties,
+      planDistribution
+    ] = await Promise.all([
+      Society.countDocuments({}),
+      User.countDocuments({}),
+      Society.countDocuments({ status: 'active' }),
+      Society.countDocuments({ 
+        trialEndsAt: { $gt: new Date(), $lt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) } 
+      }),
+      Society.aggregate([
+        { $group: { _id: '$plan', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    // Simple growth trend (mocking for now or based on createdAt)
+    const trends = await Society.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id": 1 } },
+      { $limit: 6 }
+    ]);
+
+    res.json({
+      ok: true,
+      stats: {
+        totalSocieties,
+        totalUsers,
+        activeSocieties,
+        expiringSocieties,
+        planDistribution,
+        trends: trends.map(t => ({ month: t._id, count: t.count }))
+      }
+    });
   }),
 );
 

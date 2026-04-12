@@ -7,7 +7,7 @@ import { z } from 'zod';
 const tokenPayloadSchema = z.object({
   userId: z.string(),
   role: z.enum(['user', 'admin', 'superadmin']),
-  societyId: z.string().optional(),
+  societyId: z.string().nullable().optional(),
 });
 
 export function requireAuth(): RequestHandler {
@@ -22,6 +22,8 @@ export function requireAuth(): RequestHandler {
       const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
       const parsed = tokenPayloadSchema.safeParse(decoded);
       if (!parsed.success) {
+        console.error('[Auth] Token validation failed:', parsed.error.format());
+        console.error('[Auth] Decoded payload:', decoded);
         return next(new ApiError(401, 'UNAUTHORIZED', 'Invalid token payload'));
       }
 

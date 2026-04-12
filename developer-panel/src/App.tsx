@@ -8,6 +8,7 @@ import { SocietyDetailPage } from './pages/SocietyDetailPage'
 import { AuditLogsPage } from './pages/AuditLogsPage'
 import { UsersPage } from './pages/UsersPage'
 import { UserFactoryPage } from './pages/UserFactoryPage'
+import { EarningsPage } from './pages/EarningsPage'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/societies/:id" element={<SocietyDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/user-factory" element={<UserFactoryPage />} />
+          <Route path="/earnings" element={<EarningsPage />} />
           <Route path="/user" element={<Navigate to="/users" replace />} />
           <Route path="/audit" element={<AuditLogsPage />} />
         </Route>

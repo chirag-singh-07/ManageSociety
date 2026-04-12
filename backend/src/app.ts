@@ -10,6 +10,7 @@ import { mongoSanitize } from './middlewares/mongoSanitize';
 import { errorHandler } from './middlewares/error';
 import { notFoundHandler } from './middlewares/notFound';
 import { ApiError } from './shared/apiError';
+import { checkSubscription } from './middlewares/subscription';
 import { healthRouter } from './modules/health/routes';
 import { authRouter } from './modules/auth/routes';
 import { superadminRouter } from './modules/superadmin/routes';
@@ -61,8 +62,10 @@ export function createApp() {
   app.use('/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/superadmin', superadminRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api', tenantRouter);
+  
+  // Apply subscription check to all tenant-level routes
+  app.use('/api/admin', checkSubscription(), adminRouter);
+  app.use('/api', checkSubscription(), tenantRouter);
 
   app.use(notFoundHandler());
   app.use(errorHandler());

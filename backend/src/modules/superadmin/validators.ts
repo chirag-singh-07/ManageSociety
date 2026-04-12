@@ -7,6 +7,8 @@ export const createSocietySchema = z.object({
   state: z.string().optional(),
   pincode: z.string().optional(),
   trialDays: z.coerce.number().int().min(0).max(365).default(14),
+  plan: z.string().optional(),
+  months: z.coerce.number().int().min(1).max(60).optional(),
 });
 
 export const updateSocietySchema = z.object({
