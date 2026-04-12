@@ -40,3 +40,16 @@ export type AuditLog = {
   createdAt?: string
 }
 
+export type User = {
+  _id: string
+  societyId: string
+  role: 'user' | 'admin'
+  userType?: 'resident' | 'owner' | 'tenant' | 'staff' | 'guard'
+  status: 'pending' | 'active' | 'blocked'
+  name: string
+  email: string
+  phone?: string
+  createdAt?: string
+  updatedAt?: string
+}
+

@@ -6,6 +6,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { SocietiesPage } from './pages/SocietiesPage'
 import { SocietyDetailPage } from './pages/SocietyDetailPage'
 import { AuditLogsPage } from './pages/AuditLogsPage'
+import { UsersPage } from './pages/UsersPage'
+import { UserFactoryPage } from './pages/UserFactoryPage'
 
 function App() {
   return (
@@ -16,6 +18,9 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="/societies" element={<SocietiesPage />} />
           <Route path="/societies/:id" element={<SocietyDetailPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/user-factory" element={<UserFactoryPage />} />
+          <Route path="/user" element={<Navigate to="/users" replace />} />
           <Route path="/audit" element={<AuditLogsPage />} />
         </Route>
       </Route>
