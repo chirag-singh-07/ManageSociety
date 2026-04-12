@@ -4,6 +4,9 @@
 - Copy `.env.example` to `.env` and fill values.
 - Ensure MongoDB is running and `MONGODB_URI` points to it.
 
+## Docs
+- API & architecture: `API.md`
+
 ## Run
 - Dev: `npm run dev`
 - Build: `npm run build`
@@ -20,4 +23,3 @@ This test suite needs MongoDB.
 - Option B: use `mongodb-memory-server` (may be blocked on some Windows setups):
   - `$env:MONGODB_MEMORY_SERVER="1"`
   - `npm test`
-
