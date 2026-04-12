@@ -7,6 +7,12 @@
 ## Docs
 - API & architecture: `API.md`
 
+## Deploy to Render
+- A Render Blueprint is included at repo root: `render.yaml`
+- Set required env vars in Render (at minimum `MONGODB_URI`)
+- `healthCheckPath` is `/health`
+- Optional keep-alive cron: set `PING_URL` to your API base URL (e.g. `https://your-service.onrender.com`)
+
 ## Run
 - Dev: `npm run dev`
 - Build: `npm run build`
