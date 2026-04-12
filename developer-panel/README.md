@@ -71,3 +71,7 @@ export default defineConfig([
   },
 ])
 ```
+
+## Environment
+- Copy `.env.example` to `.env`
+- Set `VITE_API_BASE_URL` to your backend base URL (Render URL in production)
