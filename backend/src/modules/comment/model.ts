@@ -11,13 +11,23 @@ export interface CommentDoc extends mongoose.Document {
   updatedAt: Date;
 }
 
+const commentAttachmentSchema = new Schema(
+  {
+    fileId: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String, required: true },
+    name: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const commentSchema = new Schema<CommentDoc>(
   {
     societyId: { type: Schema.Types.ObjectId, required: true, index: true },
     complaintId: { type: Schema.Types.ObjectId, required: true, index: true },
     by: { type: Schema.Types.ObjectId, required: true, index: true },
     message: { type: String, required: true },
-    attachments: { type: [Schema.Types.Mixed], default: [] },
+    attachments: { type: [commentAttachmentSchema], default: [] },
     ...baseSchemaFields,
   },
   { collection: 'comments' },
@@ -28,4 +38,3 @@ withTimestamps(commentSchema);
 
 export const Comment =
   mongoose.models.Comment || mongoose.model<CommentDoc>('Comment', commentSchema);
-

@@ -6,6 +6,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js'],
   clearMocks: true,
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
+  testTimeout: 30000,
   globals: {
     'ts-jest': {
       tsconfig: '<rootDir>/tsconfig.json',

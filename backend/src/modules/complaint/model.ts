@@ -26,6 +26,26 @@ export interface ComplaintDoc extends mongoose.Document {
   updatedAt: Date;
 }
 
+const complaintAttachmentSchema = new Schema(
+  {
+    fileId: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String, required: true },
+    name: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const complaintTimelineSchema = new Schema<ComplaintTimelineItem>(
+  {
+    type: { type: String, required: true },
+    message: { type: String, default: '' },
+    by: { type: Schema.Types.ObjectId, required: true },
+    at: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const complaintSchema = new Schema<ComplaintDoc>(
   {
     societyId: { type: Schema.Types.ObjectId, required: true, index: true },
@@ -42,8 +62,8 @@ const complaintSchema = new Schema<ComplaintDoc>(
     createdBy: { type: Schema.Types.ObjectId, required: true, index: true },
     assignedTo: { type: Schema.Types.ObjectId, default: null, index: true },
     flatId: { type: Schema.Types.ObjectId, default: null },
-    attachments: { type: [Schema.Types.Mixed], default: [] },
-    timeline: { type: [Schema.Types.Mixed], default: [] },
+    attachments: { type: [complaintAttachmentSchema], default: [] },
+    timeline: { type: [complaintTimelineSchema], default: [] },
     ...baseSchemaFields,
   },
   { collection: 'complaints' },
@@ -55,4 +75,3 @@ withTimestamps(complaintSchema);
 
 export const Complaint =
   mongoose.models.Complaint || mongoose.model<ComplaintDoc>('Complaint', complaintSchema);
-
