@@ -4,6 +4,9 @@ import { logger } from './logger';
 
 export async function connectDb() {
   mongoose.set('strictQuery', true);
+  // Built-in filter sanitization (defense-in-depth against operator injection)
+  // See: https://mongoosejs.com/docs/api/mongoose.html#Mongoose.prototype.set()
+  mongoose.set('sanitizeFilter', true);
   await mongoose.connect(env.MONGODB_URI, {
     autoIndex: env.NODE_ENV !== 'production',
   });

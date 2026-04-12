@@ -443,3 +443,15 @@ Optional: attempt memory server:
 - Stronger society settings validation schema
 - Background jobs (BullMQ + Redis) for fanout events
 
+---
+
+## 10) NoSQL injection protection
+
+The backend includes defense-in-depth protections:
+- Request sanitization middleware removes keys that can be used for operator injection:
+  - keys starting with `$` (example: `$where`, `$gt`)
+  - keys containing `.` (Mongo path traversal)
+  - prototype pollution keys (`__proto__`, `constructor`, `prototype`)
+- Mongoose `sanitizeFilter` is enabled to reduce risk when building filters.
+
+Important rule: never pass raw client objects directly into MongoDB query filters or update operators.
