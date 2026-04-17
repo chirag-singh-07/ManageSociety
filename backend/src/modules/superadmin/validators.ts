@@ -42,3 +42,7 @@ export const subscribeSocietySchema = z.object({
   months: z.number().int().min(1).max(60),
 });
 
+export const updatePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(6),
+});

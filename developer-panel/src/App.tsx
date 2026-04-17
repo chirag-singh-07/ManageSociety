@@ -9,6 +9,7 @@ import { AuditLogsPage } from './pages/AuditLogsPage'
 import { UsersPage } from './pages/UsersPage'
 import { UserFactoryPage } from './pages/UserFactoryPage'
 import { EarningsPage } from './pages/EarningsPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/user-factory" element={<UserFactoryPage />} />
           <Route path="/earnings" element={<EarningsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/user" element={<Navigate to="/users" replace />} />
           <Route path="/audit" element={<AuditLogsPage />} />
         </Route>

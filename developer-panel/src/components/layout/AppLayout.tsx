@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Building2, ClipboardList, LayoutDashboard, LogOut, Settings, Users, Sparkles, IndianRupee } from 'lucide-react'
+import { Building2, ClipboardList, LayoutDashboard, LogOut, Settings, Users, Sparkles, IndianRupee, UserCircle } from 'lucide-react'
 import { useAuth } from '../../auth/AuthProvider'
 import { Button } from '../ui/button'
 import { cn } from '../../lib/cn'
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/user-factory', label: 'User Factory', icon: Sparkles },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/audit', label: 'Audit Logs', icon: ClipboardList },
+  { to: '/profile', label: 'Profile', icon: UserCircle },
 ]
 
 export function AppLayout() {
