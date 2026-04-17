@@ -1,5 +1,7 @@
 import { useNavigate, Link, NavLink, Outlet } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "../../auth/AuthProvider";
+import { decodeJwt, getAccessToken } from "../../auth/session";
 import {
   BarChart3,
   Building2,
@@ -11,6 +13,7 @@ import {
   Search,
   IndianRupee,
   Megaphone,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -28,12 +31,24 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
+  // Get logged-in user info from JWT
+  const token = getAccessToken();
+  const decoded = token ? decodeJwt(token) : null;
+  const userName = (decoded?.name as string) || "Admin";
+  const userEmail = (decoded?.email as string) || "admin@example.com";
+  const userInitials = userName
+    ?.split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase() || "A";
+
   const handleLogout = async () => {
     try {
       await logout();
+      toast.success("Logged out successfully");
       navigate("/login", { replace: true });
     } catch (error) {
-      console.error("Logout failed:", error);
+      toast.error("Logout failed, please try again");
       navigate("/login", { replace: true });
     }
   };
@@ -123,20 +138,20 @@ export function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors relative">
-              <Bell className="w-5 h-5 text-muted-foreground" />
+            <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-secondary transition-colors relative group">
+              <Bell className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full border-2 border-white"></span>
             </button>
             <div className="h-8 w-px bg-border mx-2"></div>
-            <Link to="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link to="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold leading-none">John Doe</p>
+                <p className="text-sm font-bold leading-none group-hover:text-primary transition-colors">{userName}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Society Admin
+                  Admin
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center font-bold text-primary">
-                JD
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 border border-primary/20 flex items-center justify-center font-bold text-white group-hover:shadow-lg group-hover:shadow-primary/20 transition-all">
+                {userInitials}
               </div>
             </Link>
           </div>

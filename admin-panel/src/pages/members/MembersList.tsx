@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Search,
   MoreVertical,
@@ -11,59 +12,121 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Loader,
 } from "lucide-react";
-
-const members = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul@example.com",
-    phone: "+91 98765 43210",
-    flat: "A-101",
-    type: "Owner",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Priya Patel",
-    email: "priya@example.com",
-    phone: "+91 98765 43211",
-    flat: "B-202",
-    type: "Tenant",
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Amit Verma",
-    email: "amit@example.com",
-    phone: "+91 98765 43212",
-    flat: "C-305",
-    type: "Owner",
-    status: "pending",
-  },
-  {
-    id: 4,
-    name: "Sneha Gupta",
-    email: "sneha@example.com",
-    phone: "+91 98765 43213",
-    flat: "A-404",
-    type: "Owner",
-    status: "blocked",
-  },
-  {
-    id: 5,
-    name: "Vikram Singh",
-    email: "vikram@example.com",
-    phone: "+91 98765 43214",
-    flat: "D-102",
-    type: "Tenant",
-    status: "active",
-  },
-];
+import { getMembers, updateMemberStatus, type User } from "../../api/http";
 
 export function MembersList() {
+  const [members, setMembers] = useState<User[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      const response = await getMembers();
+      if (response.ok) {
+        setMembers(response.users);
+        applyFilters(response.users, searchTerm, statusFilter);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load members");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = (
+    membersToFilter: User[],
+    search: string,
+    status: string
+  ) => {
+    let filtered = membersToFilter;
+
+    if (search.trim()) {
+      filtered = filtered.filter(
+        (m) =>
+          m.name.toLowerCase().includes(search.toLowerCase()) ||
+          m.email.toLowerCase().includes(search.toLowerCase()) ||
+          (m.phone && m.phone.includes(search))
+      );
+    }
+
+    if (status !== "all") {
+      filtered = filtered.filter((m) => m.status === status);
+    }
+
+    setFilteredMembers(filtered);
+  };
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    applyFilters(members, term, statusFilter);
+  };
+
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    applyFilters(members, searchTerm, status);
+  };
+
+  const handleUpdateStatus = async (
+    memberId: string,
+    newStatus: "active" | "blocked" | "pending"
+  ) => {
+    try {
+      setUpdatingId(memberId);
+      await updateMemberStatus(memberId, newStatus);
+      
+      // Update local state
+      setMembers((prev) =>
+        prev.map((m) => (m._id === memberId ? { ...m, status: newStatus } : m))
+      );
+      applyFilters(members, searchTerm, statusFilter);
+      
+      const statusLabel = newStatus === "active" ? "approved" : newStatus;
+      toast.success(`Member ${statusLabel} successfully`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update member"
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-success/10 text-success";
+      case "pending":
+        return "bg-warning/10 text-warning";
+      case "blocked":
+        return "bg-destructive/10 text-destructive";
+      default:
+        return "bg-secondary text-muted-foreground";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "active":
+        return <CheckCircle2 className="w-3 h-3" />;
+      case "pending":
+        return <Clock className="w-3 h-3" />;
+      case "blocked":
+        return <XCircle className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -73,7 +136,7 @@ export function MembersList() {
             Society Members
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage residents, owners, and tenants of Green View Society.
+            Manage and approve residents and members.
           </p>
         </div>
         <button
@@ -85,150 +148,184 @@ export function MembersList() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-        {/* Filters Bar */}
-        <div className="p-6 border-b border-border flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search by name, flat, or email..."
-              className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl pl-10 pr-4 py-2.5 text-sm transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-primary transition-all flex-1 md:flex-none">
-              <Filter className="w-4 h-4" />
-              Filter
-            </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-primary transition-all flex-1 md:flex-none">
-              Export
-            </button>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
+            <p className="text-muted-foreground">Loading members...</p>
           </div>
         </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          {/* Filters Bar */}
+          <div className="p-6 border-b border-border flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name, email or phone..."
+                className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl pl-10 pr-4 py-2.5 text-sm transition-all"
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-primary transition-all">
+                <Filter className="w-4 h-4" />
+                Filter
+              </button>
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="px-4 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-primary transition-all bg-white cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="blocked">Blocked</option>
+              </select>
+            </div>
+          </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-secondary/30">
-                <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Member Info
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Flat & Type
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {members.map((member) => (
-                <tr
-                  key={member.id}
-                  className="hover:bg-secondary/20 transition-colors cursor-pointer group"
-                  onClick={() => navigate(`/members/${member.id}`)}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                        {member.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-foreground">
-                          {member.name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          ID: #{member.id * 1234}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                      {member.flat}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground ml-5">
-                      {member.type}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Mail className="w-3.5 h-3.5" />
-                      {member.email}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                      <Phone className="w-3.5 h-3.5" />
-                      {member.phone}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {member.status === "active" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Active
-                      </span>
-                    )}
-                    {member.status === "pending" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-warning/10 text-warning">
-                        <Clock className="w-3 h-3" />
-                        Pending
-                      </span>
-                    )}
-                    {member.status === "blocked" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-destructive/10 text-destructive">
-                        <XCircle className="w-3 h-3" />
-                        Blocked
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); /* show menu */
-                      }}
-                      className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="p-6 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Showing 5 of 1,240 members
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              disabled
-              className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-muted-foreground disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-bold text-muted-foreground hover:bg-secondary">
-              Next
-            </button>
+          {/* Table */}
+          <div className="overflow-x-auto">
+            {filteredMembers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No members found</p>
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-secondary/30">
+                    <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Member Info
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredMembers.map((member) => {
+                    const initials = member.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase();
+                    return (
+                      <tr
+                        key={member._id}
+                        className="hover:bg-secondary/20 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-foreground">
+                                {member.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {member.email}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {member.phone && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Phone className="w-3.5 h-3.5" />
+                              {member.phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-foreground capitalize">
+                            {member.userType || "Resident"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(
+                              member.status
+                            )}`}
+                          >
+                            {getStatusIcon(member.status)}
+                            {member.status.charAt(0).toUpperCase() +
+                              member.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center gap-2 justify-end">
+                            {member.status === "pending" && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handleUpdateStatus(member._id, "active")
+                                  }
+                                  disabled={updatingId === member._id}
+                                  className="px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-bold hover:bg-success/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                  {updatingId === member._id ? (
+                                    <Loader className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    "Approve"
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleUpdateStatus(member._id, "blocked")
+                                  }
+                                  disabled={updatingId === member._id}
+                                  className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {member.status === "active" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(member._id, "blocked")
+                                }
+                                disabled={updatingId === member._id}
+                                className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                Block
+                              </button>
+                            )}
+                            {member.status === "blocked" && (
+                              <button
+                                onClick={() =>
+                                  handleUpdateStatus(member._id, "active")
+                                }
+                                disabled={updatingId === member._id}
+                                className="px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-bold hover:bg-success/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              >
+                                Unblock
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

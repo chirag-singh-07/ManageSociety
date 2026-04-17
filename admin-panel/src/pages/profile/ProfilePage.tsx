@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { 
   Building2, 
   CreditCard, 
@@ -39,8 +40,6 @@ export function ProfilePage() {
   
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   
   const [isEditingName, setIsEditingName] = useState(false)
   const [editName, setEditName] = useState('')
@@ -54,7 +53,6 @@ export function ProfilePage() {
   const [showOldPassword, setShowOldPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
-  const [passwordError, setPasswordError] = useState('')
 
   useEffect(() => {
     fetchProfile()
@@ -70,7 +68,7 @@ export function ProfilePage() {
         setEditPhone(response.user.phone || '')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load profile')
+      toast.error(err instanceof Error ? err.message : 'Failed to load profile')
     } finally {
       setLoading(false)
     }
@@ -79,8 +77,6 @@ export function ProfilePage() {
   const handleSaveProfile = async () => {
     try {
       setSavingProfile(true)
-      setError('')
-      setSuccess('')
       
       const response = await updateProfile({
         name: editName,
@@ -90,11 +86,10 @@ export function ProfilePage() {
       if (response.ok) {
         setProfile(response.user)
         setIsEditingName(false)
-        setSuccess('Profile updated successfully')
-        setTimeout(() => setSuccess(''), 3000)
+        toast.success('Profile updated successfully')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile')
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile')
     } finally {
       setSavingProfile(false)
     }
@@ -102,15 +97,14 @@ export function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setPasswordError('')
     
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match')
+      toast.error('Passwords do not match')
       return
     }
     
     if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters')
+      toast.error('Password must be at least 8 characters')
       return
     }
     
@@ -121,10 +115,9 @@ export function ProfilePage() {
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setSuccess('Password changed successfully')
-      setTimeout(() => setSuccess(''), 3000)
+      toast.success('Password changed successfully')
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to change password')
+      toast.error(err instanceof Error ? err.message : 'Failed to change password')
     } finally {
       setChangingPassword(false)
     }
@@ -133,6 +126,7 @@ export function ProfilePage() {
   const handleSignOutAllDevices = async () => {
     try {
       await logout()
+      toast.success('Signed out from all devices')
       navigate('/login', { replace: true })
     } catch (error) {
       console.error('Logout failed:', error)
@@ -177,18 +171,6 @@ export function ProfilePage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Admin Profile</h1>
         <p className="text-muted-foreground mt-1">Manage your account details and security settings.</p>
       </div>
-
-      {error && (
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="p-4 rounded-lg bg-success/10 border border-success/30">
-          <p className="text-sm text-success">{success}</p>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Information */}
@@ -366,12 +348,6 @@ export function ProfilePage() {
             </div>
 
             <form onSubmit={handleChangePassword} className="p-6 space-y-5">
-              {passwordError && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                  <p className="text-sm text-destructive">{passwordError}</p>
-                </div>
-              )}
-
               {/* Old Password */}
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Current Password</label>

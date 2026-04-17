@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { 
   MessageSquare, 
@@ -13,24 +13,95 @@ import {
   AlertCircle,
   Paperclip,
   ShieldAlert,
-  Building
+  Building,
+  Loader2
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
+import { getComplaint, updateComplaintStatus, addComplaintComment } from '../../api/http'
+import type { Complaint, Comment } from '../../api/types'
 
 export function ComplaintDetails() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const [status, setStatus] = useState('in_progress')
+  const [status, setStatus] = useState('open')
+  const [complaint, setComplaint] = useState<Complaint | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [comment, setComment] = useState('')
 
-  const complaint = {
-    id: id || '101',
-    title: 'Water Leakage in A-Block Wing 2',
-    member: 'Rahul Sharma',
-    flat: 'A-101',
-    category: 'Plumbing',
-    priority: 'high',
-    date: '2 hours ago',
-    description: 'There is a major water leakage coming from the main supply line in the ceiling of A-Block Wing 2 lobby. It is creating a slippery surface and and needs immediate attention before it affects the electrical room nearby.'
+  useEffect(() => {
+    if (id) {
+      fetchComplaint()
+    }
+  }, [id])
+
+  const fetchComplaint = async () => {
+    try {
+      setLoading(true)
+      const data = await getComplaint(id!)
+      setComplaint(data.complaint)
+      setComments(data.comments || [])
+      setStatus(data.complaint.status)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load complaint")
+      navigate(-1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!complaint || !id) return
+    
+    try {
+      setStatus(newStatus)
+      await updateComplaintStatus(id, newStatus)
+      toast.success("Complaint status updated")
+      setComplaint({ ...complaint, status: newStatus })
+    } catch (err) {
+      setStatus(complaint.status)
+      toast.error(err instanceof Error ? err.message : "Failed to update status")
+    }
+  }
+
+  const handleAddComment = async () => {
+    if (!comment.trim() || !id) return
+
+    try {
+      setSubmitting(true)
+      await addComplaintComment(id, comment)
+      toast.success("Comment added")
+      setComment('')
+      await fetchComplaint()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add comment")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading complaint...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!complaint) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <AlertCircle className="w-8 h-8 text-warning mx-auto" />
+          <p className="text-sm font-semibold text-foreground">Complaint not found</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -45,15 +116,15 @@ export function ComplaintDetails() {
           </button>
           <div>
             <div className="flex items-center gap-3">
-               <h1 className="text-3xl font-bold tracking-tight text-foreground">#{complaint.id} {complaint.title}</h1>
+               <h1 className="text-3xl font-bold tracking-tight text-foreground">#{id} {complaint.title}</h1>
                <span className={cn(
                  "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                 complaint.priority === 'high' ? "bg-warning/10 text-warning" : "bg-primary/10 text-primary"
+                 complaint.priority === 'high' ? "bg-warning/10 text-warning" : complaint.priority === 'critical' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
                )}>
                   {complaint.priority} Priority
                </span>
             </div>
-            <p className="text-muted-foreground mt-1">Reported by {complaint.member} • {complaint.date}</p>
+            <p className="text-muted-foreground mt-1">Reported by {complaint.memberId} • {new Date(complaint.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
         
@@ -61,7 +132,7 @@ export function ComplaintDetails() {
            <select 
              className="bg-secondary text-foreground text-xs font-bold px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary/20 appearance-none min-w-[140px]"
              value={status}
-             onChange={(e) => setStatus(e.target.value)}
+             onChange={(e) => handleStatusChange(e.target.value)}
            >
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -86,18 +157,21 @@ export function ComplaintDetails() {
                  {complaint.description}
               </p>
               
-              <div className="flex items-center gap-3">
-                 <div className="w-20 h-20 rounded-xl bg-secondary border border-border flex items-center justify-center">
-                    <Paperclip className="w-6 h-6 text-muted-foreground" />
-                 </div>
-                 <div className="w-20 h-20 rounded-xl bg-secondary border border-border flex items-center justify-center">
-                    <Paperclip className="w-6 h-6 text-muted-foreground" />
-                 </div>
-                 <div className="text-xs text-muted-foreground flex items-center gap-2 ml-2">
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                    2 Images Attached
-                 </div>
-              </div>
+              {complaint.attachments && complaint.attachments.length > 0 && (
+                <div className="flex items-center gap-3">
+                   {complaint.attachments.slice(0, 2).map((attachment, idx) => (
+                     <a key={idx} href={attachment} target="_blank" rel="noopener noreferrer" className="w-20 h-20 rounded-xl bg-secondary border border-border flex items-center justify-center hover:bg-primary/10 transition-all">
+                        <Paperclip className="w-6 h-6 text-muted-foreground" />
+                     </a>
+                   ))}
+                   {complaint.attachments.length > 2 && (
+                     <div className="text-xs text-muted-foreground flex items-center gap-2 ml-2">
+                        <CheckCircle2 className="w-4 h-4 text-success" />
+                        {complaint.attachments.length} Files Attached
+                     </div>
+                   )}
+                </div>
+              )}
            </div>
 
            {/* Conversation / Timeline */}
@@ -107,33 +181,36 @@ export function ComplaintDetails() {
               </div>
               <div className="p-8 space-y-8">
                  <div className="relative pl-8 border-l-2 border-border space-y-10">
-                    <div className="relative">
-                       <span className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-success border-4 border-white shadow-sm ring-4 ring-success/10"></span>
-                       <div>
-                          <p className="text-xs font-bold text-foreground">Complaint Assigned</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">Assigned to: Plumbing Team (Main Branch)</p>
-                          <p className="text-[10px] text-muted-foreground uppercase opacity-60 mt-2 font-bold">1.5 Hours Ago</p>
-                       </div>
-                    </div>
-                    <div className="relative">
-                       <span className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-white shadow-sm ring-4 ring-primary/10"></span>
-                       <div className="bg-secondary/30 p-4 rounded-2xl border border-border">
-                          <p className="text-xs font-bold text-foreground">Admin Comment</p>
-                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed italic">"I have spoken to the head plumber, they will be arriving within the hour. Please ensure the lobby area is cordoned off for safety."</p>
-                          <p className="text-[10px] text-muted-foreground uppercase opacity-60 mt-3 font-bold">45 Mins Ago</p>
-                       </div>
-                    </div>
+                    {comments.map((comment, idx) => (
+                      <div key={idx} className="relative">
+                        <span className={cn(
+                          "absolute -left-[41px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ring-4",
+                          comment.type === 'system' ? 'bg-success ring-success/10' : 'bg-primary ring-primary/10'
+                        )}></span>
+                        <div {... (comment.type === 'admin' ? {className: "bg-secondary/30 p-4 rounded-2xl border border-border"} : {})}>
+                          <p className="text-xs font-bold text-foreground">{comment.type === 'admin' ? 'Admin Comment' : 'System Update'}</p>
+                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed italic">{comment.message}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase opacity-60 mt-3 font-bold">{new Date(comment.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))}
                  </div>
 
                  <div className="pt-8 border-t border-border mt-4">
                     <div className="relative">
                        <textarea 
                          rows={2}
+                         value={comment}
+                         onChange={(e) => setComment(e.target.value)}
                          placeholder="Post an internal update or comment..."
                          className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-2xl px-4 py-3 text-sm transition-all resize-none pr-14"
                        />
-                       <button className="absolute right-3 bottom-3 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                          <Send className="w-4 h-4" />
+                       <button 
+                         onClick={handleAddComment}
+                         disabled={submitting || !comment.trim()}
+                         className="absolute right-3 bottom-3 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                       >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                        </button>
                     </div>
                  </div>
@@ -149,13 +226,13 @@ export function ComplaintDetails() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                        <User className="w-4 h-4" /> Reported by
                     </div>
-                    <span className="text-xs font-bold text-foreground underline">{complaint.member}</span>
+                    <span className="text-xs font-bold text-foreground underline">{complaint.memberId}</span>
                  </div>
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                        <Building className="w-4 h-4" /> Flat
                     </div>
-                    <span className="text-xs font-bold text-foreground">{complaint.flat}</span>
+                    <span className="text-xs font-bold text-foreground">{complaint.flatNumber}</span>
                  </div>
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -167,7 +244,7 @@ export function ComplaintDetails() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                        <Clock className="w-4 h-4" /> Response Time
                     </div>
-                    <span className="text-xs font-bold text-success">32 Mins (Target: 2h)</span>
+                    <span className="text-xs font-bold text-success">Pending</span>
                  </div>
               </div>
            </div>
