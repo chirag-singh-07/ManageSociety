@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { useNavigate, Link, NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 import {
   BarChart3,
   Building2,
@@ -24,6 +25,18 @@ const navItems = [
 ];
 
 export function AdminLayout() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      navigate("/login", { replace: true });
+    }
+  };
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row font-sans selection:bg-primary/20 selection:text-primary">
       {/* Sidebar */}
@@ -85,7 +98,10 @@ export function AdminLayout() {
         </div>
 
         <div className="p-6 border-t border-border mt-auto">
-          <button className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
+          >
             <LogOut className="h-4.5 w-4.5" />
             Logout
           </button>
