@@ -21,3 +21,8 @@ export const bootstrapSuperadminSchema = z.object({
   password: z.string().min(10),
 });
 
+export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+

@@ -157,3 +157,40 @@ export async function logout(refreshToken: string) {
   await RefreshToken.updateOne({ tokenHash }, { revokedAt: new Date() });
 }
 
+export async function changePassword(
+  userId: string,
+  role: 'user' | 'admin' | 'superadmin',
+  oldPassword: string,
+  newPassword: string,
+) {
+  let user: any;
+
+  if (role === 'superadmin') {
+    user = await Superadmin.findById(userId);
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'Superadmin not found');
+  } else {
+    user = await User.findById(userId);
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  }
+
+  // Verify old password
+  const isValid = await bcrypt.compare(oldPassword, user.passwordHash);
+  if (!isValid) throw new ApiError(401, 'INVALID_PASSWORD', 'Current password is incorrect');
+
+  // Hash new password
+  const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+  // Update password
+  if (role === 'superadmin') {
+    await Superadmin.updateOne({ _id: userId }, { passwordHash: newPasswordHash });
+  } else {
+    await User.updateOne({ _id: userId }, { passwordHash: newPasswordHash });
+  }
+
+  // Revoke all refresh tokens for security
+  await RefreshToken.updateMany(
+    { userId },
+    { revokedAt: new Date() },
+  );
+}
+

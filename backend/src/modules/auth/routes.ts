@@ -8,8 +8,10 @@ import {
   loginSchema,
   refreshSchema,
   registerSchema,
+  changePasswordSchema,
 } from './validators';
-import { bootstrapSuperadmin, login, logout, refresh, registerWithInvite } from './service';
+import { bootstrapSuperadmin, login, logout, refresh, registerWithInvite, changePassword } from './service';
+import { requireAuth } from '../../middlewares/auth';
 
 export const authRouter = Router();
 
@@ -75,6 +77,17 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const input = refreshSchema.parse(req.body);
     await logout(input.refreshToken);
+    res.json({ ok: true });
+  }),
+);
+
+authRouter.post(
+  '/change-password',
+  requireAuth(),
+  authLimiter,
+  asyncHandler(async (req, res) => {
+    const input = changePasswordSchema.parse(req.body);
+    await changePassword(req.tenant!.userId, req.tenant!.role, input.oldPassword, input.newPassword);
     res.json({ ok: true });
   }),
 );

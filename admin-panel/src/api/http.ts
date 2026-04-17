@@ -119,3 +119,30 @@ export async function authLogout(refreshToken: string): Promise<void> {
     retryOn401: false,
   })
 }
+
+export interface UserProfile {
+  ok: boolean
+  user: {
+    id: string
+    email: string
+    name: string
+    phone?: string
+    societyId: string
+    role: string
+    status: string
+  }
+}
+
+export async function getProfile(): Promise<UserProfile> {
+  return fetchJSON<UserProfile>('GET', '/api/me')
+}
+
+export async function updateProfile(data: { name?: string; phone?: string }): Promise<UserProfile> {
+  return fetchJSON<UserProfile>('PATCH', '/api/me', { body: data })
+}
+
+export async function changePassword(oldPassword: string, newPassword: string): Promise<{ ok: boolean }> {
+  return fetchJSON<{ ok: boolean }>('POST', '/api/auth/change-password', {
+    body: { oldPassword, newPassword },
+  })
+}
