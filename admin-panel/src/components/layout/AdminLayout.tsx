@@ -1,6 +1,6 @@
 import { useNavigate, Link, NavLink, Outlet } from "react-router-dom";
 import { toast } from "sonner";
-import { useAuth } from "../../auth/AuthProvider";
+import { useAuth } from "../../auth/AuthContext";
 import { decodeJwt, getAccessToken } from "../../auth/session";
 import {
   BarChart3,

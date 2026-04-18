@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './auth/AuthProvider'
 import { ProtectedRoute } from './auth/ProtectedRoute'
+import { AppDialogProvider } from './components/dialog/AppDialogProvider'
 import { LoginPage } from './pages/LoginPage'
 import { AdminLayout } from './components/layout/AdminLayout'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
@@ -25,47 +26,49 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster 
-          position="top-right"
-          theme="light"
-          richColors
-          closeButton
-          expand={true}
-        />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardPage />} />
-            
-            <Route path="/members" element={<MembersList />} />
-            <Route path="/members/create" element={<CreateMember />} />
-            <Route path="/members/:id" element={<MemberDetails />} />
-            
-            <Route path="/complaints" element={<ComplaintsList />} />
-            <Route path="/complaints/:id" element={<ComplaintDetails />} />
-            
-            <Route path="/notices" element={<NoticesList />} />
-            <Route path="/notices/create" element={<CreateNotice />} />
+        <AppDialogProvider>
+          <Toaster 
+            position="top-right"
+            theme="light"
+            richColors
+            closeButton
+            expand={true}
+          />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardPage />} />
+              
+              <Route path="/members" element={<MembersList />} />
+              <Route path="/members/create" element={<CreateMember />} />
+              <Route path="/members/:id" element={<MemberDetails />} />
+              
+              <Route path="/complaints" element={<ComplaintsList />} />
+              <Route path="/complaints/:id" element={<ComplaintDetails />} />
+              
+              <Route path="/notices" element={<NoticesList />} />
+              <Route path="/notices/create" element={<CreateNotice />} />
 
-            <Route path="/maintenance" element={<MaintenanceList />} />
-            <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
-            <Route path="/maintenance/reminders" element={<MaintenanceReminders />} />
-            <Route path="/maintenance/setup" element={<SetupMaintenance />} />
-            
-            <Route path="/notifications" element={<NotificationsList />} />
-            <Route path="/notifications/create" element={<CreateNotification />} />
-            
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+              <Route path="/maintenance" element={<MaintenanceList />} />
+              <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
+              <Route path="/maintenance/reminders" element={<MaintenanceReminders />} />
+              <Route path="/maintenance/setup" element={<SetupMaintenance />} />
+              
+              <Route path="/notifications" element={<NotificationsList />} />
+              <Route path="/notifications/create" element={<CreateNotification />} />
+              
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppDialogProvider>
       </AuthProvider>
     </BrowserRouter>
   )

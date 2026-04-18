@@ -20,7 +20,7 @@ import {
   X,
   Loader
 } from 'lucide-react'
-import { useAuth } from '../../auth/AuthProvider'
+import { useAuth } from '../../auth/AuthContext'
 import { getProfile, updateProfile, changePassword } from '../../api/http'
 import { cn } from '../../lib/utils'
 

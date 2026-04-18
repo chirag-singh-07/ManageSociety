@@ -22,20 +22,54 @@ import {
   createMemberSchema,
 } from './validators';
 import { writeAuditLog } from '../audit/service';
+import { maintenanceRouter } from '../maintenance/routes';
+import { notificationRouter } from '../notification/routes';
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth(), requireRole('admin'), requireSocietyTenant());
 
+// Use sub-routers
+adminRouter.use('/maintenance', maintenanceRouter);
+adminRouter.use('/notifications', notificationRouter);
+
 adminRouter.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
     const societyId = new mongoose.Types.ObjectId(req.tenant!.societyId!);
-    const [openComplaints, totalUsers] = await Promise.all([
+    const [
+      totalMembers,
+      activeMembers,
+      pendingMembers,
+      blockedMembers,
+      openComplaints,
+      resolvedComplaints,
+      pendingComplaints,
+      noticesCount,
+      invCodesActive,
+    ] = await Promise.all([
+      User.countDocuments({ societyId, role: { $ne: 'admin' } }),
+      User.countDocuments({ societyId, status: 'active', role: { $ne: 'admin' } }),
+      User.countDocuments({ societyId, status: 'pending', role: { $ne: 'admin' } }),
+      User.countDocuments({ societyId, status: 'blocked', role: { $ne: 'admin' } }),
       Complaint.countDocuments({ societyId, status: { $in: ['open', 'in_progress'] } }),
-      User.countDocuments({ societyId, status: 'active' }),
+      Complaint.countDocuments({ societyId, status: 'resolved' }),
+      Complaint.countDocuments({ societyId, status: 'pending' }),
+      Notice.countDocuments({ societyId }),
+      InviteCode.countDocuments({ societyId, expiresAt: { $gt: new Date() } }),
     ]);
-    res.json({ ok: true, metrics: { openComplaints, totalUsers } });
+    res.json({
+      ok: true,
+      totalMembers,
+      activeMembers,
+      pendingMembers,
+      blockedMembers,
+      openComplaints,
+      resolvedComplaints,
+      pendingComplaints,
+      noticesCount,
+      invCodesActive,
+    });
   }),
 );
 
@@ -128,7 +162,10 @@ adminRouter.get(
   '/users',
   asyncHandler(async (req, res) => {
     const status = req.query.status as string | undefined;
-    const filter: any = { societyId: req.tenant!.societyId };
+    const filter: any = { 
+      societyId: req.tenant!.societyId,
+      role: { $ne: 'admin' }  // Exclude admins
+    };
     if (status) filter.status = status;
     const users = await User.find(filter).sort({ createdAt: -1 }).limit(200);
     res.json({ ok: true, users });
@@ -209,6 +246,36 @@ adminRouter.post(
     });
 
     res.json({ ok: true, user });
+  }),
+);
+
+adminRouter.delete(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'BAD_ID', 'Invalid id');
+    
+    const user = await User.findOneAndDelete({
+      _id: req.params.id,
+      societyId: req.tenant!.societyId,
+      role: { $ne: 'admin' },  // Prevent deleting admin accounts
+    });
+    
+    if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found or cannot be deleted');
+
+    await writeAuditLog({
+      scope: 'society',
+      societyId: req.tenant!.societyId,
+      actorId: req.tenant!.userId,
+      actorRole: 'admin',
+      action: 'user.delete',
+      targetType: 'user',
+      targetId: String(user._id),
+      metadata: { email: user.email, name: user.name },
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.json({ ok: true, message: 'Member deleted successfully' });
   }),
 );
 

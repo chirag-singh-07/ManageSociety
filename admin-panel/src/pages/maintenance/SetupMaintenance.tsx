@@ -1,27 +1,130 @@
-import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { 
   ArrowLeft, 
   Save, 
-  Settings, 
   Plus, 
   Trash2, 
-  IndianRupee,
+  Loader,
   Building,
-  UtilityPole,
-  ShieldCheck,
-  Zap
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useAppDialog } from '../../components/dialog/AppDialogProvider'
+import { 
+  getMaintenanceCharges, 
+  createMaintenanceCharge, 
+  deleteMaintenanceCharge,
+  type MaintenanceCharge 
+} from '../../api/http'
 
 export function SetupMaintenance() {
   const navigate = useNavigate()
+  const { confirm } = useAppDialog()
+  const [charges, setCharges] = useState<MaintenanceCharge[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [newCharge, setNewCharge] = useState({
+    name: '',
+    description: '',
+    amount: '',
+    frequency: 'monthly' as const,
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const [charges, setCharges] = useState([
-    { id: 1, type: 'General Maintenance', amount: '2500', unit: 'per Flat', icon: Building, color: 'text-primary bg-primary/10' },
-    { id: 2, type: 'Security & CCTV', amount: '500', unit: 'per Flat', icon: ShieldCheck, color: 'text-success bg-success/10' },
-    { id: 3, type: 'Utility (Water/Street Lights)', amount: '800', unit: 'per Flat', icon: Zap, color: 'text-warning bg-warning/10' },
-  ])
+  useEffect(() => {
+    fetchCharges()
+  }, [])
+
+  const fetchCharges = async () => {
+    try {
+      setLoading(true)
+      const response = await getMaintenanceCharges()
+      if (response.ok) {
+        setCharges(response.charges || [])
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load charges')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const validateNewCharge = () => {
+    const newErrors: Record<string, string> = {}
+    if (!newCharge.name.trim()) newErrors.name = 'Name is required'
+    if (!newCharge.amount || Number(newCharge.amount) <= 0) newErrors.amount = 'Amount must be greater than 0'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleAddCharge = async () => {
+    if (!validateNewCharge()) return
+
+    try {
+      setSaving(true)
+      const response = await createMaintenanceCharge({
+        name: newCharge.name,
+        description: newCharge.description,
+        amount: Number(newCharge.amount),
+        frequency: newCharge.frequency,
+      })
+
+      if (response.ok && response.charge) {
+        setCharges([...charges, response.charge])
+        setNewCharge({ name: '', description: '', amount: '', frequency: 'monthly' })
+        setErrors({})
+        toast.success('Charge added successfully!')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add charge')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteCharge = async (id: string) => {
+    const selectedCharge = charges.find((c) => c._id === id)
+    const approved = await confirm({
+      title: 'Delete Charge',
+      description: `Are you sure you want to delete "${selectedCharge?.name ?? 'this charge'}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      destructive: true,
+    })
+    if (!approved) return
+
+    try {
+      const response = await deleteMaintenanceCharge(id)
+      if (response.ok) {
+        setCharges(charges.filter(c => c._id !== id))
+        toast.success('Charge deleted successfully!')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete charge')
+    }
+  }
+
+  const totalMonthly = charges.reduce((sum, c) => sum + c.amount, 0)
+  const formatINR = (value: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(value)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center space-y-4">
+          <Loader className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading charges...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -35,118 +138,175 @@ export function SetupMaintenance() {
           </button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Setup Maintenance</h1>
-            <p className="text-muted-foreground mt-1">Define the monthly billing structure for the society.</p>
+            <p className="text-muted-foreground mt-1">Define the maintenance charges for your society.</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] transition-all">
-          <Save className="w-4 h-4" />
-          Save Structure
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
            <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
+              <div className="p-6 border-b border-border bg-secondary/20">
                  <h3 className="font-bold text-lg">Billing Components</h3>
-                 <button className="flex items-center gap-2 text-xs font-bold text-primary hover:bg-white px-3 py-1.5 rounded-lg transition-all">
-                    <Plus className="w-4 h-4" />
-                    Add Category
-                 </button>
               </div>
               
               <div className="p-6 space-y-4">
-                 {charges.map((charge) => (
-                   <div key={charge.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border border-border hover:border-primary/30 transition-all group">
-                      <div className="flex items-center gap-4">
-                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", charge.color)}>
-                            <charge.icon className="w-6 h-6" />
-                         </div>
-                         <div>
-                            <p className="font-bold text-foreground">{charge.type}</p>
-                            <p className="text-[10px] text-muted-foreground">{charge.unit}</p>
-                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₹</span>
-                            <input 
-                              type="number" 
-                              defaultValue={charge.amount}
-                              className="w-32 bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl pl-7 pr-4 py-2.5 text-sm font-bold transition-all text-right"
-                            />
-                         </div>
-                         <button className="p-2 text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 className="w-5 h-5" />
-                         </button>
-                      </div>
+                 {charges.length > 0 ? (
+                   <>
+                     {charges.map((charge) => (
+                       <div key={charge._id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border border-border hover:border-primary/30 transition-all group">
+                          <div className="flex items-center gap-4 flex-1">
+                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <Building className="w-6 h-6 text-primary" />
+                             </div>
+                             <div>
+                                <p className="font-bold text-foreground">{charge.name}</p>
+                                {charge.description && <p className="text-xs text-muted-foreground">{charge.description}</p>}
+                             </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                             <div className="text-right">
+                                <p className="text-xs text-muted-foreground mb-1">Amount ({charge.frequency})</p>
+                                <p className="text-lg font-bold text-primary">{formatINR(charge.amount)}</p>
+                             </div>
+                             <button 
+                               onClick={() => handleDeleteCharge(charge._id)}
+                               className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                             >
+                                <Trash2 className="w-5 h-5" />
+                             </button>
+                          </div>
+                       </div>
+                     ))}
+                     
+                     <div className="mt-8 pt-6 border-t border-border flex justify-between items-center px-4">
+                        <span className="font-bold text-muted-foreground">Total Monthly Charge</span>
+                        <span className="text-2xl font-bold text-primary">{formatINR(totalMonthly)}</span>
+                     </div>
+                   </>
+                 ) : (
+                   <div className="text-center py-12">
+                     <Building className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                     <p className="text-muted-foreground">No charges configured yet</p>
                    </div>
-                 ))}
-                 
-                 <div className="mt-8 pt-6 border-t border-border flex justify-between items-center px-4">
-                    <span className="font-bold text-muted-foreground">Approximate Monthly Bill</span>
-                    <span className="text-2xl font-bold text-primary">₹3,800 <span className="text-xs text-muted-foreground font-medium">/ Flat</span></span>
-                 </div>
+                 )}
               </div>
            </div>
 
+           {/* Add New Charge */}
            <div className="bg-white rounded-2xl border border-border p-8 shadow-sm">
-              <h3 className="font-bold text-lg mb-6">Automation Settings</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Bill Generation Date</label>
-                    <select className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all appearance-none cursor-pointer">
-                       <option>1st of every month</option>
-                       <option>5th of every month</option>
-                       <option>Last day of month</option>
-                    </select>
+              <h3 className="font-bold text-lg mb-6">Add New Charge</h3>
+              <div className="space-y-4">
+                 <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase px-1 mb-2 block">Charge Name *</label>
+                    <input 
+                      type="text" 
+                      value={newCharge.name}
+                      onChange={(e) => {
+                        setNewCharge({ ...newCharge, name: e.target.value })
+                        if (errors.name) setErrors({ ...errors, name: '' })
+                      }}
+                      placeholder="e.g., General Maintenance"
+                      className={cn(
+                        "w-full bg-secondary/50 border-2 focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all",
+                        errors.name ? "border-destructive/50 focus:border-destructive" : "border-transparent focus:border-primary/20"
+                      )}
+                    />
+                    {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
                  </div>
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Due Date Grace Period</label>
-                    <div className="flex items-center gap-3">
+
+                 <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase px-1 mb-2 block">Description</label>
+                    <textarea 
+                      value={newCharge.description}
+                      onChange={(e) => setNewCharge({ ...newCharge, description: e.target.value })}
+                      placeholder="Optional description"
+                      rows={2}
+                      className="w-full bg-secondary/50 border-2 border-transparent focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all resize-none"
+                    />
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                       <label className="text-xs font-bold text-muted-foreground uppercase px-1 mb-2 block">Amount (₹) *</label>
                        <input 
                          type="number" 
-                         defaultValue="10"
-                         className="flex-1 bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all text-center font-bold"
+                         value={newCharge.amount}
+                         onChange={(e) => {
+                           setNewCharge({ ...newCharge, amount: e.target.value })
+                           if (errors.amount) setErrors({ ...errors, amount: '' })
+                         }}
+                         placeholder="0"
+                         className={cn(
+                           "w-full bg-secondary/50 border-2 focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all",
+                           errors.amount ? "border-destructive/50 focus:border-destructive" : "border-transparent focus:border-primary/20"
+                         )}
                        />
-                       <span className="text-sm font-semibold text-muted-foreground">Days</span>
+                       {errors.amount && <p className="text-xs text-destructive mt-1">{errors.amount}</p>}
+                    </div>
+
+                    <div>
+                       <label className="text-xs font-bold text-muted-foreground uppercase px-1 mb-2 block">Frequency</label>
+                       <select 
+                         value={newCharge.frequency}
+                         onChange={(e) => setNewCharge({ ...newCharge, frequency: e.target.value as any })}
+                         className="w-full bg-secondary/50 border-2 border-transparent focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all"
+                       >
+                         <option value="monthly">Monthly</option>
+                         <option value="quarterly">Quarterly</option>
+                         <option value="annual">Annual</option>
+                       </select>
                     </div>
                  </div>
+
+                 <button 
+                   onClick={handleAddCharge}
+                   disabled={saving}
+                   className="w-full flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   {saving ? (
+                     <>
+                       <Loader className="w-4 h-4 animate-spin" />
+                       Adding...
+                     </>
+                   ) : (
+                     <>
+                       <Plus className="w-4 h-4" />
+                       Add Charge
+                     </>
+                   )}
+                 </button>
               </div>
            </div>
         </div>
 
+        {/* Summary Card */}
         <div className="lg:col-span-1 space-y-6">
-           <div className="bg-primary p-8 rounded-3xl text-white shadow-xl shadow-primary/20 relative overflow-hidden">
-              <IndianRupee className="absolute -right-6 -bottom-6 w-40 h-40 opacity-10 rotate-12" />
-              <p className="text-sm font-semibold opacity-70 uppercase tracking-widest mb-2">Estimated Revenue</p>
-              <h3 className="text-4xl font-bold mb-4">₹4.71 Lakhs</h3>
-              <p className="text-xs opacity-80 leading-relaxed mb-6">
-                Based on current society strength of 124 units. This revenue covers security, housekeeping, and common area expenses.
-              </p>
-              <div className="p-4 rounded-2xl bg-white/10 border border-white/20">
-                 <p className="text-[10px] font-bold uppercase mb-2">Sinking Fund Policy</p>
-                 <p className="text-[11px] opacity-90 leading-relaxed">
-                    20% is automatically diverted to the long-term repair fund as per bylaws.
-                 </p>
+           <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+                <h4 className="font-bold text-primary">Summary</h4>
+              </div>
+              <div className="space-y-3">
+                <div className="bg-white/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Total Charges</p>
+                  <p className="text-2xl font-bold text-foreground">{charges.length}</p>
+                </div>
+                <div className="bg-white/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Monthly Amount</p>
+                  <p className="text-2xl font-bold text-primary">{formatINR(totalMonthly)}</p>
+                </div>
               </div>
            </div>
-           
-           <div className="p-6 border border-border rounded-2xl bg-white shadow-sm">
-              <h4 className="font-bold text-sm mb-4">Apply To:</h4>
-              <div className="space-y-3">
-                 {['All Blocks', 'Wing A only', 'Commercial Units'].map((option, idx) => (
-                   <div key={idx} className="flex items-center gap-3 cursor-pointer group">
-                      <div className={cn(
-                        "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
-                        idx === 0 ? "border-primary bg-primary text-white" : "border-border group-hover:border-primary/50"
-                      )}>
-                         {idx === 0 && <Plus className="w-3.5 h-3.5" />}
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{option}</span>
-                   </div>
-                 ))}
+
+           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-blue-900">Info</p>
+                  <p className="text-xs text-blue-800 mt-1">Configure these charges to automatically generate bills for all members</p>
+                </div>
               </div>
            </div>
         </div>

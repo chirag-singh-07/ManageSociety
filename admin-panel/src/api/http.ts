@@ -184,6 +184,10 @@ export async function updateMemberStatus(id: string, status: 'active' | 'blocked
   })
 }
 
+export async function deleteMember(id: string): Promise<{ ok: boolean }> {
+  return fetchJSON<{ ok: boolean }>('DELETE', `/api/admin/users/${id}`)
+}
+
 // ============= INVITE CODES =============
 export interface InviteCode {
   _id: string
@@ -366,7 +370,178 @@ export async function deleteNotice(id: string): Promise<{ ok: boolean }> {
   return fetchJSON<{ ok: boolean }>('DELETE', `/api/admin/notices/${id}`)
 }
 
-// ============= FILE UPLOADS =============
+// ============= MAINTENANCE =============
+export interface MaintenanceCharge {
+  _id: string
+  name: string
+  description?: string
+  amount: number
+  frequency: 'monthly' | 'quarterly' | 'annual'
+  order: number
+  active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface MaintenanceBill {
+  _id: string
+  flatNumber: string
+  userId?: string
+  period: string
+  dueDate: string
+  totalAmount: number
+  charges: Array<{
+    chargeId?: string
+    name: string
+    amount: number
+  }>
+  paidAmount: number
+  status: 'unpaid' | 'partial' | 'paid' | 'overdue'
+  paymentHistory?: Array<{
+    amount: number
+    date: string
+    method: string
+  }>
+  remarks?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface MaintenanceResponse<T = any> {
+  ok: boolean
+  data?: T
+  charges?: MaintenanceCharge[]
+  bills?: MaintenanceBill[]
+  bill?: MaintenanceBill
+  charge?: MaintenanceCharge
+  count?: number
+  summary?: Array<{
+    _id: string
+    count: number
+    totalAmount: number
+    collectedAmount: number
+  }>
+}
+
+// Charges
+export async function getMaintenanceCharges(): Promise<MaintenanceResponse<MaintenanceCharge[]>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceCharge[]>>('GET', '/api/admin/maintenance/charges')
+}
+
+export async function createMaintenanceCharge(data: {
+  name: string
+  description?: string
+  amount: number
+  frequency?: 'monthly' | 'quarterly' | 'annual'
+}): Promise<MaintenanceResponse<MaintenanceCharge>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceCharge>>('POST', '/api/admin/maintenance/charges', { body: data })
+}
+
+export async function updateMaintenanceCharge(id: string, data: Partial<MaintenanceCharge>): Promise<MaintenanceResponse<MaintenanceCharge>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceCharge>>('PATCH', `/api/admin/maintenance/charges/${id}`, { body: data })
+}
+
+export async function deleteMaintenanceCharge(id: string): Promise<{ ok: boolean }> {
+  return fetchJSON<{ ok: boolean }>('DELETE', `/api/admin/maintenance/charges/${id}`)
+}
+
+// Bills
+export async function getMaintenanceBills(status?: string, period?: string): Promise<MaintenanceResponse<MaintenanceBill[]>> {
+  const params = new URLSearchParams()
+  if (status) params.append('status', status)
+  if (period) params.append('period', period)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return fetchJSON<MaintenanceResponse<MaintenanceBill[]>>('GET', `/api/admin/maintenance/bills${query}`)
+}
+
+export async function getMaintenanceBillsSummary(): Promise<MaintenanceResponse> {
+  return fetchJSON<MaintenanceResponse>('GET', '/api/admin/maintenance/bills/summary')
+}
+
+export async function generateMaintenanceBills(data: {
+  period: string
+  dueDate: string
+}): Promise<MaintenanceResponse<MaintenanceBill[]>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceBill[]>>('POST', '/api/admin/maintenance/bills/generate', { body: data })
+}
+
+export async function getMaintenanceBill(id: string): Promise<MaintenanceResponse<MaintenanceBill>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceBill>>('GET', `/api/admin/maintenance/bills/${id}`)
+}
+
+export async function updateMaintenanceBillStatus(id: string, data: {
+  status: 'unpaid' | 'partial' | 'paid' | 'overdue'
+  remarks?: string
+}): Promise<MaintenanceResponse<MaintenanceBill>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceBill>>('PATCH', `/api/admin/maintenance/bills/${id}/status`, { body: data })
+}
+
+export async function recordMaintenancePayment(id: string, data: {
+  amount: number
+  method?: string
+  remarks?: string
+}): Promise<MaintenanceResponse<MaintenanceBill>> {
+  return fetchJSON<MaintenanceResponse<MaintenanceBill>>('POST', `/api/admin/maintenance/bills/${id}/payment`, { body: data })
+}
+
+export async function sendMaintenanceReminders(billIds: string[], message?: string): Promise<{ ok: boolean; message: string; count: number; bills?: MaintenanceBill[] }> {
+  return fetchJSON<{ ok: boolean; message: string; count: number; bills?: MaintenanceBill[] }>('POST', '/api/admin/maintenance/bills/send-reminders', { body: { billIds, message } })
+}
+
+export async function deleteMaintenanceBill(id: string): Promise<{ ok: boolean }> {
+  return fetchJSON<{ ok: boolean }>('DELETE', `/api/admin/maintenance/bills/${id}`)
+}
+
+// ============= NOTIFICATIONS =============
+export interface Notification {
+  _id: string
+  title: string
+  message: string
+  type: 'notice' | 'maintenance' | 'complaint' | 'payment' | 'system'
+  actionUrl?: string
+  read: boolean
+  createdAt: string
+}
+
+export interface NotificationResponse {
+  ok: boolean
+  notifications?: Notification[]
+  unreadCount?: number
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+  }
+}
+
+export async function getNotifications(page?: number, unreadOnly?: boolean): Promise<NotificationResponse> {
+  const params = new URLSearchParams()
+  if (page) params.append('page', page.toString())
+  if (unreadOnly) params.append('unreadOnly', 'true')
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return fetchJSON<NotificationResponse>('GET', `/api/admin/notifications${query}`)
+}
+
+export async function getUnreadNotificationCount(): Promise<{ ok: boolean; unreadCount: number }> {
+  return fetchJSON<{ ok: boolean; unreadCount: number }>('GET', '/api/admin/notifications/unread/count')
+}
+
+export async function markNotificationAsRead(id: string): Promise<NotificationResponse> {
+  return fetchJSON<NotificationResponse>('PATCH', `/api/admin/notifications/${id}/read`)
+}
+
+export async function markAllNotificationsAsRead(type?: string): Promise<{ ok: boolean; message: string; modifiedCount: number }> {
+  return fetchJSON<{ ok: boolean; message: string; modifiedCount: number }>('PATCH', '/api/admin/notifications/read/all', { body: { type } })
+}
+
+export async function deleteNotification(id: string): Promise<{ ok: boolean }> {
+  return fetchJSON<{ ok: boolean }>('DELETE', `/api/admin/notifications/${id}`)
+}
+
+export async function clearAllNotifications(): Promise<{ ok: boolean; deletedCount: number }> {
+  return fetchJSON<{ ok: boolean; deletedCount: number }>('DELETE', '/api/admin/notifications/clear/all')
+}
 export interface PresignResponse {
   ok: boolean
   fileId: string
