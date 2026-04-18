@@ -13,6 +13,7 @@ export interface UserDoc extends mongoose.Document {
   name: string;
   email: string;
   phone?: string;
+  flatNumber?: string;
   passwordHash: string;
   flatId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -33,6 +34,7 @@ const userSchema = new Schema<UserDoc>(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, default: '' },
+    flatNumber: { type: String, default: '' },
     passwordHash: { type: String, required: true },
     flatId: { type: Schema.Types.ObjectId, default: null },
     ...baseSchemaFields,

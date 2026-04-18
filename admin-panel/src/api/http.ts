@@ -153,6 +153,7 @@ export interface User {
   email: string
   phone?: string
   userType?: string
+  flatNumber?: string
   status: 'pending' | 'active' | 'blocked'
   flatId?: string
   createdAt: string
@@ -212,6 +213,21 @@ export async function getInviteCodes(): Promise<InviteCodeResponse> {
 
 export async function disableInviteCode(id: string): Promise<{ ok: boolean }> {
   return fetchJSON<{ ok: boolean }>('POST', `/api/admin/invite-codes/${id}/disable`)
+}
+
+// ============= CREATE DIRECT MEMBER =============
+export interface CreateMemberRequest {
+  name: string
+  email: string
+  phone: string
+  flatNumber: string
+  password: string
+}
+
+export async function createMemberDirect(data: CreateMemberRequest): Promise<{ ok: boolean; user?: User }> {
+  return fetchJSON<{ ok: boolean; user?: User }>('POST', '/api/admin/users', {
+    body: data,
+  })
 }
 
 // ============= DASHBOARD =============

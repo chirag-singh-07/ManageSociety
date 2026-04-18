@@ -5,305 +5,451 @@ import {
   UserPlus, 
   ArrowLeft, 
   Save, 
-  ShieldCheck,
+  Loader,
+  Eye,
+  EyeOff,
+  Home,
+  Mail,
+  Phone,
   User,
-  Copy,
-  Check,
-  Loader
+  Lock,
+  CheckCircle2,
+  AlertCircle,
+  Zap
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { createInviteCode, type InviteCode } from '../../api/http'
+import { createMemberDirect } from '../../api/http'
 
 export function CreateMember() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<'form' | 'invite'>('form')
   const [loading, setLoading] = useState(false)
-  const [inviteCode, setInviteCode] = useState<InviteCode | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    type: 'resident',
-    expiresInDays: 30,
-    maxUses: 1
+    name: '',
+    email: '',
+    phone: '',
+    flatNumber: '',
+    password: ''
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleCreateInvite = async (e: React.FormEvent) => {
+  const getPasswordStrength = () => {
+    const pwd = formData.password
+    if (!pwd) return { score: 0, label: '', color: '' }
+    
+    let score = 0
+    if (pwd.length >= 8) score++
+    if (/[a-z]/.test(pwd)) score++
+    if (/[A-Z]/.test(pwd)) score++
+    if (/\d/.test(pwd)) score++
+    
+    const strengths = [
+      { score: 0, label: 'Very Weak', color: 'bg-destructive/50' },
+      { score: 1, label: 'Weak', color: 'bg-orange-500/50' },
+      { score: 2, label: 'Fair', color: 'bg-yellow-500/50' },
+      { score: 3, label: 'Good', color: 'bg-blue-500/50' },
+      { score: 4, label: 'Strong', color: 'bg-success/50' }
+    ]
+    
+    return strengths[score] || strengths[0]
+  }
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required'
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Valid email is required'
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone is required'
+    } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+      newErrors.phone = '10-digit phone number required'
+    }
+
+    if (!formData.flatNumber.trim()) {
+      newErrors.flatNumber = 'Flat number is required'
+    }
+
+    if (!formData.password.trim()) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
+    } else if (!/(?=.*[a-z])/.test(formData.password)) {
+      newErrors.password = 'Password needs lowercase letters'
+    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
+      newErrors.password = 'Password needs uppercase letters'
+    } else if (!/(?=.*[0-9])/.test(formData.password)) {
+      newErrors.password = 'Password needs numbers'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.type) {
-      toast.error('Please select invite type')
+
+    if (!validateForm()) {
+      toast.error('Please fix all errors before submitting')
       return
     }
 
     try {
       setLoading(true)
-      const response = await createInviteCode(
-        formData.type as 'resident' | 'admin',
-        formData.expiresInDays,
-        formData.maxUses
-      )
-      
-      if (response.ok && response.inviteCode) {
-        setInviteCode(response.inviteCode)
-        setStep('invite')
-        toast.success('Invite code created successfully!')
+      const response = await createMemberDirect(formData)
+
+      if (response.ok) {
+        toast.success('Member created successfully!')
+        setTimeout(() => {
+          navigate('/members')
+        }, 1000)
       } else {
-        toast.error('Failed to create invite code')
+        toast.error('Failed to create member')
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create invite code')
+      toast.error(err instanceof Error ? err.message : 'Failed to create member')
     } finally {
       setLoading(false)
     }
   }
 
-  const copyToClipboard = () => {
-    if (inviteCode) {
-      navigator.clipboard.writeText(inviteCode.code)
-      setCopied(true)
-      toast.success('Code copied to clipboard!')
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  if (step === 'invite' && inviteCode) {
-    return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => {
-              setStep('form')
-              setInviteCode(null)
-            }}
-            className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all shadow-sm"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Invite Code Ready</h1>
-            <p className="text-muted-foreground mt-1">Share this code with the new member to join.</p>
-          </div>
-        </div>
-
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
-            <div className="p-8 bg-gradient-to-br from-success/10 to-success/5 flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center">
-                <Check className="w-8 h-8 text-success" />
-              </div>
-              <div className="text-center">
-                <h2 className="text-xl font-bold text-foreground">Invite Code Created!</h2>
-                <p className="text-muted-foreground text-sm mt-1">Share this code with the member below</p>
-              </div>
-            </div>
-
-            <div className="p-8 border-t border-border space-y-6">
-              <div className="bg-primary/5 rounded-xl p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Invite Code</p>
-                  <p className="text-3xl font-bold text-primary font-mono mt-2">{inviteCode.code}</p>
-                </div>
-                <button
-                  onClick={copyToClipboard}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white font-bold hover:scale-[1.05] transition-transform"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Type</p>
-                  <p className="text-sm font-bold text-foreground mt-1 capitalize">{inviteCode.type}</p>
-                </div>
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Max Uses</p>
-                  <p className="text-sm font-bold text-foreground mt-1">{inviteCode.maxUses}</p>
-                </div>
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Expires</p>
-                  <p className="text-sm font-bold text-foreground mt-1">{new Date(inviteCode.expiresAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                <p className="text-xs font-bold text-blue-900">How to use:</p>
-                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                  <li>Send the code above to the member</li>
-                  <li>They visit the landing page and select "Join"</li>
-                  <li>They enter the invite code and fill their details</li>
-                  <li>Once registered, they will need your approval to access</li>
-                </ol>
-              </div>
-
-              <div className="flex gap-3 justify-end pt-4 border-t border-border">
-                <button 
-                  onClick={() => navigate('/members')}
-                  className="px-6 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-secondary transition-all"
-                >Close</button>
-                <button 
-                  onClick={() => {
-                    setStep('form')
-                    setInviteCode(null)
-                  }}
-                  className="flex items-center gap-2 bg-primary text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Create Another
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all shadow-sm"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Create Invite</h1>
-          <p className="text-muted-foreground mt-1">Generate an invite code for a new member to join your society.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-           <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-border bg-secondary/30 flex items-center gap-2">
-                 <UserPlus className="w-5 h-5 text-primary" />
-                 <h3 className="font-bold">Invite Configuration</h3>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50/50 py-12 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-500">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <button 
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all mb-6 shadow-sm hover:shadow-md"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+          
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+                <UserPlus className="w-7 h-7 text-white" />
               </div>
-              <form onSubmit={handleCreateInvite} className="p-8 space-y-6">
-                 <div className="space-y-4">
-                    <label className="text-xs font-bold text-muted-foreground uppercase px-1 flex items-center gap-2">
-                       <ShieldCheck className="w-3.5 h-3.5" /> Invite Type
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                       <button 
-                         type="button"
-                         onClick={() => setFormData({...formData, type: 'resident'})}
-                         className={cn(
-                           "p-4 rounded-xl border-2 transition-all font-bold",
-                           formData.type === 'resident' 
-                             ? "border-primary bg-primary/5 text-primary" 
-                             : "border-border bg-white text-muted-foreground"
-                         )}
-                       >
-                         Resident
-                       </button>
-                       <button 
-                         type="button"
-                         onClick={() => setFormData({...formData, type: 'admin'})}
-                         className={cn(
-                           "p-4 rounded-xl border-2 transition-all font-bold",
-                           formData.type === 'admin' 
-                             ? "border-primary bg-primary/5 text-primary" 
-                             : "border-border bg-white text-muted-foreground"
-                         )}
-                       >
-                         Admin
-                       </button>
+              <div>
+                <h1 className="text-4xl font-bold text-slate-900">Create Member</h1>
+                <p className="text-slate-600 mt-0.5">Add a new resident to your society</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Form Card */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 overflow-hidden border border-slate-200/80">
+          
+          {/* Form Sections */}
+          <div className="p-8 sm:p-10 space-y-8">
+            
+            {/* Personal Information Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Personal Information</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Name */}
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Full Name <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value })
+                        if (errors.name) setErrors({ ...errors, name: '' })
+                      }}
+                      placeholder="Rahul Sharma"
+                      className={cn(
+                        "w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-slate-50/50 text-slate-900 placeholder-slate-400 transition-all duration-200",
+                        "focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20",
+                        errors.name ? "border-destructive bg-destructive/5 focus:border-destructive" : "border-slate-200 hover:border-slate-300 focus:border-primary"
+                      )}
+                    />
+                  </div>
+                  {errors.name && (
+                    <div className="flex items-center gap-2 mt-2 text-destructive">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{errors.name}</span>
                     </div>
-                 </div>
-
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase px-1">Expires In (Days)</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      max="365"
-                      placeholder="e.g. 30"
-                      className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all"
-                      value={formData.expiresInDays}
-                      onChange={(e) => setFormData({...formData, expiresInDays: parseInt(e.target.value) || 30})}
-                    />
-                 </div>
-
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase px-1">Max Uses</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      max="1000"
-                      placeholder="e.g. 1"
-                      className="w-full bg-secondary/50 border-none focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm transition-all"
-                      value={formData.maxUses}
-                      onChange={(e) => setFormData({...formData, maxUses: parseInt(e.target.value) || 1})}
-                    />
-                 </div>
-
-                 <div className="pt-8 border-t border-border flex justify-end gap-3">
-                    <button 
-                      type="button"
-                      onClick={() => navigate('/members')}
-                      className="px-6 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-secondary transition-all"
-                    >Cancel</button>
-                    <button 
-                      type="submit"
-                      disabled={loading}
-                      className="flex items-center gap-2 bg-primary text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                       {loading ? (
-                         <>
-                           <Loader className="w-4 h-4 animate-spin" />
-                           Creating...
-                         </>
-                       ) : (
-                         <>
-                           <Save className="w-4 h-4" />
-                           Create Invite
-                         </>
-                       )}
-                    </button>
-                 </div>
-              </form>
-           </div>
-        </div>
-
-        <div className="lg:col-span-1 space-y-6">
-           <div className="bg-primary/5 border border-primary/10 p-6 rounded-2xl space-y-4">
-              <div className="flex items-center gap-2 text-primary font-bold">
-                 <ShieldCheck className="w-5 h-5" />
-                 How It Works
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                 Create an invite code to send to new members. They will use this code to register on the platform and join your society.
-              </p>
-           </div>
-           
-           <div className="bg-white border border-border p-6 rounded-2xl shadow-sm space-y-4">
-              <div className="flex items-center gap-2 font-bold">
-                 <User className="w-5 h-5 text-primary" />
-                 Member Types
-              </div>
-              <div className="space-y-3">
-                <div className="p-3 bg-secondary/50 rounded-lg">
-                  <p className="text-xs font-bold text-foreground">Resident</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Regular society members who need admin approval</p>
+                  )}
                 </div>
-                <div className="p-3 bg-secondary/50 rounded-lg">
-                  <p className="text-xs font-bold text-foreground">Admin</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Society administrators with full access (auto-approved)</p>
+
+                {/* Email */}
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Email Address <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value })
+                        if (errors.email) setErrors({ ...errors, email: '' })
+                      }}
+                      placeholder="rahul@example.com"
+                      className={cn(
+                        "w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-slate-50/50 text-slate-900 placeholder-slate-400 transition-all duration-200",
+                        "focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20",
+                        errors.email ? "border-destructive bg-destructive/5 focus:border-destructive" : "border-slate-200 hover:border-slate-300 focus:border-primary"
+                      )}
+                    />
+                  </div>
+                  {errors.email && (
+                    <div className="flex items-center gap-2 mt-2 text-destructive">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{errors.email}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Phone */}
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Phone Number <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Phone className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        setFormData({ ...formData, phone: e.target.value })
+                        if (errors.phone) setErrors({ ...errors, phone: '' })
+                      }}
+                      placeholder="9876543210"
+                      className={cn(
+                        "w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-slate-50/50 text-slate-900 placeholder-slate-400 transition-all duration-200",
+                        "focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20",
+                        errors.phone ? "border-destructive bg-destructive/5 focus:border-destructive" : "border-slate-200 hover:border-slate-300 focus:border-primary"
+                      )}
+                    />
+                  </div>
+                  {errors.phone && (
+                    <div className="flex items-center gap-2 mt-2 text-destructive">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{errors.phone}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-           </div>
-        </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-200" />
+
+            {/* Property Information Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Home className="w-4 h-4 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Property Information</h2>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Flat Number <span className="text-destructive">*</span>
+                </label>
+                <div className="relative group">
+                  <Home className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="text"
+                    value={formData.flatNumber}
+                    onChange={(e) => {
+                      setFormData({ ...formData, flatNumber: e.target.value })
+                      if (errors.flatNumber) setErrors({ ...errors, flatNumber: '' })
+                    }}
+                    placeholder="e.g., A-101, Wing-B 202"
+                    className={cn(
+                      "w-full pl-12 pr-4 py-3 rounded-xl border-2 bg-slate-50/50 text-slate-900 placeholder-slate-400 transition-all duration-200",
+                      "focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20",
+                      errors.flatNumber ? "border-destructive bg-destructive/5 focus:border-destructive" : "border-slate-200 hover:border-slate-300 focus:border-primary"
+                    )}
+                  />
+                </div>
+                {errors.flatNumber && (
+                  <div className="flex items-center gap-2 mt-2 text-destructive">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">{errors.flatNumber}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-200" />
+
+            {/* Security Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-primary" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Security</h2>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Password <span className="text-destructive">*</span>
+                </label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-4 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value })
+                      if (errors.password) setErrors({ ...errors, password: '' })
+                    }}
+                    placeholder="Create a strong password"
+                    className={cn(
+                      "w-full pl-12 pr-12 py-3 rounded-xl border-2 bg-slate-50/50 text-slate-900 placeholder-slate-400 transition-all duration-200",
+                      "focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/20",
+                      errors.password ? "border-destructive bg-destructive/5 focus:border-destructive" : "border-slate-200 hover:border-slate-300 focus:border-primary"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+
+                {/* Password Strength Indicator */}
+                {formData.password && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-600">Password Strength</span>
+                      <span className={cn("text-xs font-bold", {
+                        'text-destructive': getPasswordStrength().score < 2,
+                        'text-orange-500': getPasswordStrength().score === 2,
+                        'text-blue-500': getPasswordStrength().score === 3,
+                        'text-success': getPasswordStrength().score === 4,
+                      })}>
+                        {getPasswordStrength().label}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div 
+                        className={cn("h-full rounded-full transition-all duration-300", getPasswordStrength().color)}
+                        style={{ width: `${(getPasswordStrength().score / 4) * 100}%` }}
+                      />
+                    </div>
+                    <ul className="text-xs text-slate-600 space-y-1 mt-3">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className={cn("w-3.5 h-3.5", formData.password.length >= 8 ? "text-success" : "text-slate-300")} />
+                        <span>Minimum 8 characters</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className={cn("w-3.5 h-3.5", /[a-z]/.test(formData.password) ? "text-success" : "text-slate-300")} />
+                        <span>Lowercase letter</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className={cn("w-3.5 h-3.5", /[A-Z]/.test(formData.password) ? "text-success" : "text-slate-300")} />
+                        <span>Uppercase letter</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className={cn("w-3.5 h-3.5", /\d/.test(formData.password) ? "text-success" : "text-slate-300")} />
+                        <span>Number</span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+
+                {errors.password && (
+                  <div className="flex items-center gap-2 mt-3 text-destructive">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">{errors.password}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6 space-y-3">
+              <div className="flex items-start gap-3">
+                <Zap className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-primary mb-2">Member will be created with:</p>
+                  <ul className="space-y-1.5 text-sm text-slate-700">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                      <span><strong>Active status</strong> - Can login immediately</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                      <span>Access to <strong>mobile app</strong> using email & password</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                      <span><strong>Audit logged</strong> for security tracking</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 sm:px-10 py-6 bg-slate-50/50 border-t border-slate-200 flex gap-3 justify-end">
+            <button 
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className={cn(
+                "inline-flex items-center gap-2 px-8 py-2.5 rounded-xl font-semibold text-white transition-all shadow-lg",
+                loading 
+                  ? "bg-slate-400 cursor-not-allowed opacity-75" 
+                  : "bg-primary hover:bg-primary/90 active:scale-[0.98] shadow-primary/30 hover:shadow-primary/40"
+              )}
+            >
+              {loading ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Create Member</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Footer Text */}
+        <p className="text-center text-xs text-slate-500 mt-6">
+          All member data is securely encrypted and stored
+        </p>
       </div>
     </div>
   )

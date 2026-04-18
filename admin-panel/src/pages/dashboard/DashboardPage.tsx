@@ -37,16 +37,6 @@ const recentActivities = [
   },
 ];
 
-// const upcomingEvents = [
-//   {
-//     id: 1,
-//     title: "System Maintenance Check",
-//     date: "Today",
-//     time: "6:00 PM",
-//     location: "Server",
-//   },
-// ];
-
 export function DashboardPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

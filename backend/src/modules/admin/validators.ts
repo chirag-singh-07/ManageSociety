@@ -14,6 +14,18 @@ export const approveUserSchema = z.object({
   status: z.enum(['active', 'blocked']).default('active'),
 });
 
+export const createMemberSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().regex(/^\d{10}$/, 'Phone must be 10 digits'),
+  flatNumber: z.string().min(1, 'Flat number is required').max(50),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/(?=.*[a-z])/, 'Password must contain lowercase letters')
+    .regex(/(?=.*[A-Z])/, 'Password must contain uppercase letters')
+    .regex(/(?=.*\d)/, 'Password must contain numbers'),
+});
+
 export const adminNoticeCreateSchema = z.object({
   title: z.string().min(2),
   body: z.string().min(1),

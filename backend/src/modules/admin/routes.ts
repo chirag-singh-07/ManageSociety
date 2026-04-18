@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { asyncHandler } from '../../shared/asyncHandler';
 import { requireAuth } from '../../middlewares/auth';
 import { requireRole } from '../../middlewares/rbac';
@@ -18,6 +19,7 @@ import {
   assignComplaintSchema,
   complaintStatusSchema,
   createInviteCodeSchema,
+  createMemberSchema,
 } from './validators';
 import { writeAuditLog } from '../audit/service';
 
@@ -130,6 +132,54 @@ adminRouter.get(
     if (status) filter.status = status;
     const users = await User.find(filter).sort({ createdAt: -1 }).limit(200);
     res.json({ ok: true, users });
+  }),
+);
+
+adminRouter.post(
+  '/users',
+  asyncHandler(async (req, res) => {
+    const input = createMemberSchema.parse(req.body);
+
+    // Check if email already exists in this society
+    const existingUser = await User.findOne({
+      societyId: req.tenant!.societyId,
+      email: input.email.toLowerCase(),
+    });
+
+    if (existingUser) {
+      throw new ApiError(409, 'EMAIL_EXISTS', 'Email already exists in this society');
+    }
+
+    // Hash the password
+    const passwordHash = await bcrypt.hash(input.password, 12);
+
+    // Create the user
+    const user = await User.create({
+      societyId: req.tenant!.societyId,
+      role: 'user',
+      status: 'active',
+      name: input.name,
+      email: input.email.toLowerCase(),
+      phone: input.phone,
+      flatNumber: input.flatNumber,
+      passwordHash,
+    });
+
+    // Write audit log
+    await writeAuditLog({
+      scope: 'society',
+      societyId: req.tenant!.societyId,
+      actorId: req.tenant!.userId,
+      actorRole: 'admin',
+      action: 'member.create',
+      targetType: 'user',
+      targetId: String(user._id),
+      metadata: { email: user.email, flatNumber: input.flatNumber },
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.status(201).json({ ok: true, user });
   }),
 );
 
