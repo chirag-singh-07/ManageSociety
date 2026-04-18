@@ -1,1 +1,17 @@
 if any society have the trial plan they wil show the alreat that they are using the trail plan and also show the trils end status and after the tril or any plan ends they not make the re subscription then show redirect to a page to that messages and also they are npt able to do anything so they login and the plans ends they redirect to the this plan ends pages  
+
+
+
+If you want, next I’ll add subtle animations/transitions (card entrance + tab press feedback + onboarding motion) for an even more premium feel.
+
+yes make this 
+
+If you want, next I can add:
+
+pull-to-refresh on each tab,
+complaint detail screen with comments,
+offline-friendly caching and retry queue for uploads.
+yes make this 
+
+and also this 
+and also when i try to login and after that i got redirect to the onboradding screen why fix that and make all thing working good

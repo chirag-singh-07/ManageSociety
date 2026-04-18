@@ -161,14 +161,29 @@ adminRouter.post(
 adminRouter.get(
   '/users',
   asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.tenant!.societyId)) {
+      throw new ApiError(400, 'TENANT_INVALID', 'Invalid societyId in auth token');
+    }
+    const societyObjectId = new mongoose.Types.ObjectId(req.tenant!.societyId);
     const status = req.query.status as string | undefined;
     const filter: any = { 
-      societyId: req.tenant!.societyId,
+      societyId: societyObjectId,
       role: { $ne: 'admin' }  // Exclude admins
     };
     if (status) filter.status = status;
-    const users = await User.find(filter).sort({ createdAt: -1 }).limit(200);
-    res.json({ ok: true, users });
+
+    // Use raw collection query to avoid model-casting edge cases on legacy/dirty records.
+    const users = await User.collection
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .project({
+        passwordHash: 0,
+        __v: 0,
+      })
+      .toArray();
+
+    res.json({ ok: true, users: users ?? [] });
   }),
 );
 

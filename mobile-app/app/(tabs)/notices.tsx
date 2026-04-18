@@ -1,56 +1,76 @@
+﻿import { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { ScreenContainer } from "@/src/components/screen-container";
-import { colors, radius } from "@/src/theme/colors";
-
-const notices = [
-  { title: "Lift Maintenance", date: "18 Apr 2026", body: "Tower B lift will be under maintenance from 2 PM to 5 PM." },
-  { title: "Festival Meeting", date: "16 Apr 2026", body: "Residents' meeting at clubhouse on Saturday 6 PM." },
-  { title: "Parking Update", date: "13 Apr 2026", body: "Visitor parking area has been shifted to Block C." },
-];
+import { PremiumCard } from "@/src/components/premium-card";
+import { colors } from "@/src/theme/colors";
+import { getNotices, type Notice } from "@/src/api/client";
 
 export default function NoticesScreen() {
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadNotices = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getNotices();
+      setNotices(res.notices ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNotices();
+    }, [loadNotices]),
+  );
+
   return (
     <ScreenContainer>
-      {notices.map((notice) => (
-        <View
-          key={notice.title}
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: 16,
-            gap: 10,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 12,
-                backgroundColor: colors.secondary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="megaphone-outline" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.foreground, fontWeight: "800", fontSize: 16 }} selectable>
-                {notice.title}
-              </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 12 }} selectable>
-                {notice.date}
-              </Text>
-            </View>
-          </View>
-          <Text style={{ color: colors.foreground, lineHeight: 22 }} selectable>
-            {notice.body}
+      {loading ? (
+        <Text style={{ color: colors.mutedForeground }} selectable>
+          Loading notices...
+        </Text>
+      ) : notices.length === 0 ? (
+        <PremiumCard>
+          <Text style={{ color: colors.mutedForeground }} selectable>
+            No notices available.
           </Text>
-        </View>
-      ))}
+        </PremiumCard>
+      ) : (
+        notices.map((notice) => (
+          <PremiumCard key={notice._id}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  backgroundColor: colors.secondary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="megaphone" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: colors.foreground, fontWeight: "800", fontSize: 16 }} selectable>
+                  {notice.title}
+                </Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12 }} selectable>
+                  {notice.publishedAt ? new Date(notice.publishedAt).toLocaleDateString("en-IN") : "Draft"}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={{ color: colors.foreground, lineHeight: 22, marginTop: 10 }} selectable>
+              {notice.body}
+            </Text>
+          </PremiumCard>
+        ))
+      )}
     </ScreenContainer>
   );
 }

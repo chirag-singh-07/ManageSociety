@@ -38,6 +38,14 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ManageSociety to access your photos so you can attach complaint images.",
+          "cameraPermission": "Allow ManageSociety to use your camera to capture complaint photos."
+        }
       ]
     ],
     "experiments": {

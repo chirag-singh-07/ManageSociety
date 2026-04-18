@@ -1,7 +1,26 @@
 import { Stack } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
 import { colors } from "@/src/theme/colors";
+import { AuthProvider, useAuth } from "@/src/auth/auth-context";
 
-export default function RootLayout() {
+function RootNavigator() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.backgroundSoft,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <Stack
       screenOptions={{
@@ -16,5 +35,13 @@ export default function RootLayout() {
       <Stack.Screen name="login" options={{ title: "Sign In" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
   );
 }

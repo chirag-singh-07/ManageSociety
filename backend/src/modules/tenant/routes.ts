@@ -8,6 +8,7 @@ import { User } from '../user/model';
 import { Notice } from '../notice/model';
 import { Complaint } from '../complaint/model';
 import { Comment } from '../comment/model';
+import { MaintenanceBill } from '../maintenance/model';
 import { addCommentSchema, createComplaintSchema, presignSchema, updateMeSchema } from './validators';
 import { createPresign } from '../files/presign';
 import { FileMeta } from '../files/model';
@@ -162,3 +163,26 @@ tenantRouter.post(
   }),
 );
 
+// Maintenance bills (resident/member view)
+tenantRouter.get(
+  '/maintenance/bills',
+  asyncHandler(async (req, res) => {
+    const status = req.query.status as string | undefined;
+    const period = req.query.period as string | undefined;
+
+    const filter: Record<string, unknown> = {
+      societyId: req.tenant!.societyId,
+    };
+
+    // Tenant users should only see their own bills.
+    if (req.tenant!.role === 'user') {
+      filter.userId = req.tenant!.userId;
+    }
+
+    if (status) filter.status = status;
+    if (period) filter.period = period;
+
+    const bills = await MaintenanceBill.find(filter).sort({ period: -1, createdAt: -1 }).limit(200);
+    res.json({ ok: true, bills });
+  }),
+);

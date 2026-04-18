@@ -10,7 +10,7 @@ export function ScreenContainer({ children }: ScreenContainerProps) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.backgroundSoft }}
       contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 32 }}
       keyboardShouldPersistTaps="handled"
     >

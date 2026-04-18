@@ -1,25 +1,28 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { PrimaryButton } from "@/src/components/primary-button";
 import { colors, radius } from "@/src/theme/colors";
+import { PremiumCard } from "@/src/components/premium-card";
+import { useAuth } from "@/src/auth/auth-context";
 
 const slides = [
   {
-    icon: "business-outline" as const,
+    icon: "business" as const,
     title: "Manage Society In One Place",
     subtitle:
       "Track members, notices, complaints, and maintenance without switching tools.",
   },
   {
-    icon: "wallet-outline" as const,
+    icon: "wallet" as const,
     title: "Track Payments Clearly",
     subtitle:
       "See pending dues, paid amounts, and overdue bills with a clean monthly summary.",
   },
   {
-    icon: "notifications-outline" as const,
+    icon: "notifications" as const,
     title: "Stay Updated Instantly",
     subtitle:
       "Get important announcements and reminders as soon as your society admin posts them.",
@@ -28,9 +31,15 @@ const slides = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  if (isAuthenticated) {
+    router.replace("/");
+    return null;
+  }
 
   const goNext = () => {
     if (activeIndex === slides.length - 1) {
@@ -43,7 +52,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.backgroundSoft }}>
       <View
         style={{
           paddingTop: 64,
@@ -79,41 +88,58 @@ export default function OnboardingScreen() {
             key={slide.title}
             style={{ width, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 18 }}
           >
-            <View
-              style={{
-                borderRadius: radius.xl,
-                backgroundColor: colors.secondary,
-                padding: 26,
-                minHeight: 320,
-                justifyContent: "center",
-                gap: 20,
-              }}
-            >
+            <PremiumCard padded={false}>
               <View
                 style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 20,
-                  backgroundColor: colors.primary,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  borderRadius: radius.xl,
+                  padding: 26,
+                  minHeight: 420,
+                  gap: 20,
+                  overflow: "hidden",
                 }}
               >
-                <Ionicons name={slide.icon} size={34} color={colors.primaryForeground} />
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -32,
+                    right: -32,
+                    width: 160,
+                    height: 160,
+                    borderRadius: 99,
+                    backgroundColor: "#DCE8FF",
+                  }}
+                />
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 20,
+                    backgroundColor: colors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name={slide.icon} size={34} color={colors.primaryForeground} />
+                </View>
+                <Image
+                  source={require("@/assets/images/splash-icon.png")}
+                  contentFit="contain"
+                  style={{ width: "100%", height: 120 }}
+                />
+                <Text
+                  style={{ fontSize: 30, lineHeight: 36, fontWeight: "800", color: colors.foreground }}
+                  selectable
+                >
+                  {slide.title}
+                </Text>
+                <Text
+                  style={{ fontSize: 16, lineHeight: 24, color: colors.mutedForeground }}
+                  selectable
+                >
+                  {slide.subtitle}
+                </Text>
               </View>
-              <Text
-                style={{ fontSize: 30, lineHeight: 36, fontWeight: "800", color: colors.foreground }}
-                selectable
-              >
-                {slide.title}
-              </Text>
-              <Text
-                style={{ fontSize: 16, lineHeight: 24, color: colors.mutedForeground }}
-                selectable
-              >
-                {slide.subtitle}
-              </Text>
-            </View>
+            </PremiumCard>
           </View>
         ))}
       </ScrollView>
@@ -148,3 +174,4 @@ export default function OnboardingScreen() {
     </View>
   );
 }
+

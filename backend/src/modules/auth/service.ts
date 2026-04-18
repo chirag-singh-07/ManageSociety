@@ -99,6 +99,7 @@ export async function login(params: { email: string; password: string }) {
   if (user.status !== 'active') throw new ApiError(403, 'USER_INACTIVE', 'User not active');
   const ok = await bcrypt.compare(params.password, user.passwordHash);
   if (!ok) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+  if (!user.societyId) throw new ApiError(400, 'TENANT_REQUIRED', 'societyId not set for this user');
 
   return issueTokens({
     userId: String(user._id),
@@ -193,4 +194,3 @@ export async function changePassword(
     { revokedAt: new Date() },
   );
 }
-
