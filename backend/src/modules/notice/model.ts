@@ -37,7 +37,7 @@ const noticeSchema = new Schema<NoticeDoc>(
     body: { type: String, required: true },
     attachments: { type: [noticeAttachmentSchema], default: [] },
     publishedAt: { type: Date, default: () => new Date(), index: true },
-    createdBy: { type: Schema.Types.ObjectId, required: true, index: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     audience: { type: String, enum: ['all', 'owners', 'tenants', 'custom'], default: 'all' },
     ...baseSchemaFields,
   },

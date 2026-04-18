@@ -213,6 +213,30 @@ adminRouter.post(
 );
 
 // Notices
+adminRouter.get(
+  '/notices',
+  asyncHandler(async (req, res) => {
+    const notices = await Notice.find({ societyId: req.tenant!.societyId })
+      .populate('createdBy', 'name')
+      .sort({ publishedAt: -1 })
+      .limit(500);
+    res.json({ ok: true, notices });
+  }),
+);
+
+adminRouter.get(
+  '/notices/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'BAD_ID', 'Invalid id');
+    const notice = await Notice.findOne({
+      _id: req.params.id,
+      societyId: req.tenant!.societyId,
+    }).populate('createdBy', 'name');
+    if (!notice) throw new ApiError(404, 'NOT_FOUND', 'Notice not found');
+    res.json({ ok: true, notice });
+  }),
+);
+
 adminRouter.post(
   '/notices',
   asyncHandler(async (req, res) => {
@@ -226,6 +250,9 @@ adminRouter.post(
       createdBy: req.tenant!.userId,
       publishedAt: input.publishedAt ?? new Date(),
     });
+
+    // Populate createdBy
+    await notice.populate('createdBy', 'name');
 
     await writeAuditLog({
       scope: 'society',
@@ -252,7 +279,7 @@ adminRouter.patch(
       { _id: req.params.id, societyId: req.tenant!.societyId },
       { $set: input },
       { new: true },
-    );
+    ).populate('createdBy', 'name');
     if (!notice) throw new ApiError(404, 'NOT_FOUND', 'Notice not found');
 
     await writeAuditLog({
@@ -269,6 +296,32 @@ adminRouter.patch(
     });
 
     res.json({ ok: true, notice });
+  }),
+);
+
+adminRouter.delete(
+  '/notices/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'BAD_ID', 'Invalid id');
+    const notice = await Notice.findOneAndDelete({
+      _id: req.params.id,
+      societyId: req.tenant!.societyId,
+    });
+    if (!notice) throw new ApiError(404, 'NOT_FOUND', 'Notice not found');
+
+    await writeAuditLog({
+      scope: 'society',
+      societyId: req.tenant!.societyId,
+      actorId: req.tenant!.userId,
+      actorRole: 'admin',
+      action: 'notice.delete',
+      targetType: 'notice',
+      targetId: String(notice._id),
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    res.json({ ok: true });
   }),
 );
 

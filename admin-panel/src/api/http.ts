@@ -312,18 +312,20 @@ export interface Notice {
   _id: string
   title: string
   body: string
-  audience: 'all' | 'members' | 'admins'
+  audience: 'all' | 'owners' | 'tenants' | 'custom'
   attachments?: Array<{
     fileId: string
-    publicUrl: string
-    fileName: string
-  }>
-  createdBy: {
-    _id: string
+    url: string
+    type: string
     name: string
+  }>
+  createdBy?: {
+    _id?: string
+    name?: string
   }
-  createdAt: string
-  updatedAt: string
+  publishedAt?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface NoticeResponse {
@@ -336,16 +338,28 @@ export async function getNotices(): Promise<NoticeResponse> {
   return fetchJSON<NoticeResponse>('GET', '/api/admin/notices')
 }
 
-export async function createNotice(title: string, body: string, audience: 'all' | 'members' | 'admins', attachments: Array<{ fileId: string; publicUrl: string }> = []): Promise<NoticeResponse> {
-  return fetchJSON<NoticeResponse>('POST', '/api/admin/notices', {
-    body: { title, body, audience, attachments },
-  })
+export async function getNotice(id: string): Promise<NoticeResponse> {
+  return fetchJSON<NoticeResponse>('GET', `/api/admin/notices/${id}`)
 }
 
-export async function updateNotice(id: string, title: string, body: string, audience: 'all' | 'members' | 'admins', attachments: Array<{ fileId: string; publicUrl: string }> = []): Promise<NoticeResponse> {
-  return fetchJSON<NoticeResponse>('PATCH', `/api/admin/notices/${id}`, {
-    body: { title, body, audience, attachments },
-  })
+export async function createNotice(data: {
+  title: string
+  body: string
+  audience: 'all' | 'owners' | 'tenants' | 'custom'
+  attachments?: Array<{ fileId: string; url: string; type: string; name: string }>
+  publishedAt?: string
+}): Promise<NoticeResponse> {
+  return fetchJSON<NoticeResponse>('POST', '/api/admin/notices', { body: data })
+}
+
+export async function updateNotice(id: string, data: {
+  title?: string
+  body?: string
+  audience?: 'all' | 'owners' | 'tenants' | 'custom'
+  attachments?: Array<{ fileId: string; url: string; type: string; name: string }>
+  publishedAt?: string
+}): Promise<NoticeResponse> {
+  return fetchJSON<NoticeResponse>('PATCH', `/api/admin/notices/${id}`, { body: data })
 }
 
 export async function deleteNotice(id: string): Promise<{ ok: boolean }> {
