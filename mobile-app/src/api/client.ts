@@ -136,7 +136,16 @@ export type Complaint = {
   category: string;
   priority: "low" | "medium" | "high";
   status: "open" | "in_progress" | "resolved" | "rejected";
-  attachments: Array<{ fileId: string; url: string; type: string; name: string }>;
+  attachments: { fileId: string; url: string; type: string; name: string }[];
+  createdAt: string;
+};
+
+export type ComplaintComment = {
+  _id: string;
+  complaintId: string;
+  by: string;
+  message: string;
+  attachments: { fileId: string; url: string; type: string; name: string }[];
   createdAt: string;
 };
 
@@ -177,6 +186,18 @@ export async function getMe() {
   return fetchJSON<MeResponse>("GET", "/api/me");
 }
 
+export async function updateMe(input: { name?: string; phone?: string }) {
+  return fetchJSON<MeResponse>("PATCH", "/api/me", {
+    body: input,
+  });
+}
+
+export async function changePassword(input: { oldPassword: string; newPassword: string }) {
+  return fetchJSON<{ ok: true }>("POST", "/api/auth/change-password", {
+    body: input,
+  });
+}
+
 export async function getNotices() {
   return fetchJSON<{ ok: true; notices: Notice[] }>("GET", "/api/notices");
 }
@@ -185,14 +206,30 @@ export async function getComplaints() {
   return fetchJSON<{ ok: true; complaints: Complaint[] }>("GET", "/api/complaints");
 }
 
+export async function getComplaintDetail(id: string) {
+  return fetchJSON<{ ok: true; complaint: Complaint; comments: ComplaintComment[] }>("GET", `/api/complaints/${id}`);
+}
+
 export async function createComplaint(input: {
   title: string;
   description: string;
   category: string;
   priority: "low" | "medium" | "high";
-  attachments: Array<{ fileId: string; url: string; type: string; name: string }>;
+  attachments: { fileId: string; url: string; type: string; name: string }[];
 }) {
   return fetchJSON<{ ok: true; complaint: Complaint }>("POST", "/api/complaints", {
+    body: input,
+  });
+}
+
+export async function addComplaintComment(
+  complaintId: string,
+  input: {
+    message: string;
+    attachments: { fileId: string; url: string; type: string; name: string }[];
+  },
+) {
+  return fetchJSON<{ ok: true; comment: ComplaintComment }>("POST", `/api/complaints/${complaintId}/comments`, {
     body: input,
   });
 }

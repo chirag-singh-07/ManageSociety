@@ -1,7 +1,8 @@
-﻿import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/theme/colors";
 import { useAuth } from "@/src/auth/auth-context";
+import { AnimatedTabBarButton } from "@/src/components/animated-tab-bar-button";
 
 export default function TabsLayout() {
   const { isAuthenticated } = useAuth();
@@ -20,12 +21,14 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarLabelStyle: { fontSize: 12, fontWeight: "700" },
         tabBarStyle: {
-          height: 72,
+          height: 76,
           paddingBottom: 10,
-          paddingTop: 8,
+          paddingTop: 10,
           backgroundColor: colors.background,
           borderTopColor: colors.borderSoft,
+          borderTopWidth: 1,
         },
+        tabBarButton: (props) => <AnimatedTabBarButton {...props} />,
       }}
     >
       <Tabs.Screen

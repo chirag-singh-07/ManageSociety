@@ -1,24 +1,14 @@
 import { Stack } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
 import { colors } from "@/src/theme/colors";
 import { AuthProvider, useAuth } from "@/src/auth/auth-context";
+import { AppLoadingScreen } from "@/src/components/app-loading-screen";
+import { ToastProvider } from "@/src/components/ui/toast-provider";
 
 function RootNavigator() {
   const { loading } = useAuth();
 
   if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.backgroundSoft,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <AppLoadingScreen />;
   }
 
   return (
@@ -34,14 +24,18 @@ function RootNavigator() {
       <Stack.Screen name="onboarding" options={{ title: "Welcome", headerShown: false }} />
       <Stack.Screen name="login" options={{ title: "Sign In" }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="complaints/[id]" options={{ title: "Complaint Detail" }} />
+      <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

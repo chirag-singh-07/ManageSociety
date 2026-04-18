@@ -1,16 +1,25 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { colors, radius } from "@/src/theme/colors";
 
 type PremiumCardProps = {
   children: ReactNode;
   soft?: boolean;
   padded?: boolean;
+  animated?: boolean;
+  enteringDelay?: number;
 };
 
-export function PremiumCard({ children, soft = false, padded = true }: PremiumCardProps) {
+export function PremiumCard({
+  children,
+  soft = false,
+  padded = true,
+  animated = true,
+  enteringDelay = 0,
+}: PremiumCardProps) {
   return (
-    <View
+    <Animated.View
+      entering={animated ? FadeInUp.duration(360).delay(enteringDelay) : undefined}
       style={{
         backgroundColor: soft ? colors.backgroundSoft : colors.card,
         borderRadius: radius.lg,
@@ -21,6 +30,6 @@ export function PremiumCard({ children, soft = false, padded = true }: PremiumCa
       }}
     >
       {children}
-    </View>
+    </Animated.View>
   );
 }

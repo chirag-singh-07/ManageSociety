@@ -1,8 +1,8 @@
-﻿import { useRef, useState } from "react";
-import { useRouter } from "expo-router";
+import { useMemo, useRef, useState } from "react";
+import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import Animated, { FadeInDown, FadeInUp, LinearTransition } from "react-native-reanimated";
 import { PrimaryButton } from "@/src/components/primary-button";
 import { colors, radius } from "@/src/theme/colors";
 import { PremiumCard } from "@/src/components/premium-card";
@@ -11,23 +11,29 @@ import { useAuth } from "@/src/auth/auth-context";
 const slides = [
   {
     icon: "business" as const,
-    title: "Manage Society In One Place",
-    subtitle:
-      "Track members, notices, complaints, and maintenance without switching tools.",
+    title: "Everything In One Place",
+    subtitle: "Manage notices, maintenance, and complaint updates from one clean dashboard.",
+    bullets: ["Fast monthly overview", "Simple complaint tracking", "Instant society alerts"],
   },
   {
     icon: "wallet" as const,
-    title: "Track Payments Clearly",
-    subtitle:
-      "See pending dues, paid amounts, and overdue bills with a clean monthly summary.",
+    title: "Crystal-Clear Payments",
+    subtitle: "Track due amounts, paid history, and overdue reminders without confusion.",
+    bullets: ["Live due summary", "Month-by-month breakdown", "Payment status visibility"],
   },
   {
-    icon: "notifications" as const,
-    title: "Stay Updated Instantly",
-    subtitle:
-      "Get important announcements and reminders as soon as your society admin posts them.",
+    icon: "chatbubbles" as const,
+    title: "Stay Connected",
+    subtitle: "Raise issues, add comments, and follow resolution progress from your phone.",
+    bullets: ["Comment timeline", "Photo attachments", "Offline-safe submissions"],
   },
 ];
+
+const stats = [
+  { label: "Resident-first UX", value: "Modern" },
+  { label: "Complaint updates", value: "Live" },
+  { label: "Payment clarity", value: "High" },
+] as const;
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -35,10 +41,10 @@ export default function OnboardingScreen() {
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const activeSlide = useMemo(() => slides[activeIndex], [activeIndex]);
 
   if (isAuthenticated) {
-    router.replace("/");
-    return null;
+    return <Redirect href={"/(tabs)" as any} />;
   }
 
   const goNext = () => {
@@ -46,6 +52,7 @@ export default function OnboardingScreen() {
       router.replace("/login");
       return;
     }
+
     const nextIndex = activeIndex + 1;
     scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
     setActiveIndex(nextIndex);
@@ -55,6 +62,30 @@ export default function OnboardingScreen() {
     <View style={{ flex: 1, backgroundColor: colors.backgroundSoft }}>
       <View
         style={{
+          position: "absolute",
+          top: -80,
+          right: -70,
+          width: 220,
+          height: 220,
+          borderRadius: 120,
+          backgroundColor: "#DCE8FF",
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          bottom: -100,
+          left: -60,
+          width: 240,
+          height: 240,
+          borderRadius: 130,
+          backgroundColor: "#EAF2FF",
+        }}
+      />
+
+      <Animated.View
+        entering={FadeInDown.duration(420)}
+        style={{
           paddingTop: 64,
           paddingHorizontal: 20,
           flexDirection: "row",
@@ -62,15 +93,20 @@ export default function OnboardingScreen() {
           alignItems: "center",
         }}
       >
-        <Text style={{ fontSize: 20, fontWeight: "800", color: colors.foreground }} selectable>
-          ManageSociety
-        </Text>
+        <View>
+          <Text style={{ fontSize: 21, fontWeight: "800", color: colors.foreground }} selectable>
+            ManageSociety
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }} selectable>
+            Smarter living for your community
+          </Text>
+        </View>
         <Pressable onPress={() => router.replace("/login")}>
           <Text style={{ color: colors.primary, fontWeight: "700" }} selectable>
             Skip
           </Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <ScrollView
         ref={scrollRef}
@@ -83,71 +119,77 @@ export default function OnboardingScreen() {
           setActiveIndex(index);
         }}
       >
-        {slides.map((slide) => (
-          <View
+        {slides.map((slide, index) => (
+          <Animated.View
+            entering={FadeInUp.duration(420).delay(90 + index * 80)}
             key={slide.title}
-            style={{ width, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 18 }}
+            style={{ width, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 12, gap: 14 }}
           >
             <PremiumCard padded={false}>
               <View
                 style={{
                   borderRadius: radius.xl,
-                  padding: 26,
-                  minHeight: 420,
-                  gap: 20,
+                  padding: 22,
+                  minHeight: 398,
+                  gap: 16,
                   overflow: "hidden",
                 }}
               >
                 <View
                   style={{
-                    position: "absolute",
-                    top: -32,
-                    right: -32,
-                    width: 160,
-                    height: 160,
-                    borderRadius: 99,
-                    backgroundColor: "#DCE8FF",
-                  }}
-                />
-                <View
-                  style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 20,
+                    width: 66,
+                    height: 66,
+                    borderRadius: 18,
                     backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
+                    boxShadow: "0 10px 22px rgba(33, 90, 215, 0.3)",
                   }}
                 >
-                  <Ionicons name={slide.icon} size={34} color={colors.primaryForeground} />
+                  <Ionicons name={slide.icon} size={30} color={colors.primaryForeground} />
                 </View>
-                <Image
-                  source={require("@/assets/images/splash-icon.png")}
-                  contentFit="contain"
-                  style={{ width: "100%", height: 120 }}
-                />
-                <Text
-                  style={{ fontSize: 30, lineHeight: 36, fontWeight: "800", color: colors.foreground }}
-                  selectable
-                >
+
+                <Text style={{ fontSize: 30, lineHeight: 36, fontWeight: "800", color: colors.foreground }} selectable>
                   {slide.title}
                 </Text>
-                <Text
-                  style={{ fontSize: 16, lineHeight: 24, color: colors.mutedForeground }}
-                  selectable
-                >
+                <Text style={{ fontSize: 16, lineHeight: 24, color: colors.mutedForeground }} selectable>
                   {slide.subtitle}
                 </Text>
+
+                <View style={{ gap: 9, marginTop: 4 }}>
+                  {slide.bullets.map((item) => (
+                    <View key={item} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                      <Text style={{ color: colors.foreground, fontWeight: "600" }} selectable>
+                        {item}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </PremiumCard>
-          </View>
+
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {stats.map((item) => (
+                <PremiumCard key={item.label} soft>
+                  <Text style={{ color: colors.secondaryForeground, fontSize: 13, fontWeight: "800" }} selectable>
+                    {item.value}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, marginTop: 4 }} selectable>
+                    {item.label}
+                  </Text>
+                </PremiumCard>
+              ))}
+            </View>
+          </Animated.View>
         ))}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 20, paddingBottom: 34, gap: 18 }}>
+      <Animated.View entering={FadeInDown.duration(460).delay(180)} style={{ paddingHorizontal: 20, paddingBottom: 30, gap: 16 }}>
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
           {slides.map((slide, index) => (
-            <View
+            <Animated.View
+              layout={LinearTransition.duration(220)}
               key={slide.title}
               style={{
                 width: index === activeIndex ? 26 : 8,
@@ -160,18 +202,21 @@ export default function OnboardingScreen() {
         </View>
 
         <PrimaryButton
-          label={activeIndex === slides.length - 1 ? "Get Started" : "Next"}
+          label={activeIndex === slides.length - 1 ? "Continue To Login" : "Next"}
           onPress={goNext}
           icon={
             <Ionicons
-              name={activeIndex === slides.length - 1 ? "checkmark-circle-outline" : "arrow-forward"}
+              name={activeIndex === slides.length - 1 ? "arrow-forward-circle-outline" : "arrow-forward"}
               size={18}
               color={colors.primaryForeground}
             />
           }
         />
-      </View>
+
+        <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 12 }} selectable>
+          {activeSlide.title}
+        </Text>
+      </Animated.View>
     </View>
   );
 }
-
