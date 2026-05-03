@@ -18,6 +18,14 @@ const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
   ALLOWED_ORIGINS: z.string().optional(),
+  TRUST_PROXY: z.union([z.literal('true'), z.literal('false')]).default('false'),
+  REQUEST_SIZE_LIMIT: z.string().default('1mb'),
+  GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().min(50).default(600),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(3).default(20),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(3).default(10),
+  PAGINATION_DEFAULT_LIMIT: z.coerce.number().int().min(1).max(100).default(25),
+  PAGINATION_MAX_LIMIT: z.coerce.number().int().min(1).max(200).default(100),
+  ADMIN_IP_WHITELIST: z.string().optional(),
   SUPERADMIN_BOOTSTRAP_KEY: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('auto'),
@@ -38,7 +46,11 @@ const raw = parsed.data;
 
 export const env = {
   ...raw,
+  TRUST_PROXY: raw.TRUST_PROXY === 'true',
   ALLOWED_ORIGINS: raw.ALLOWED_ORIGINS
     ? raw.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    : ([] as string[]),
+  ADMIN_IP_WHITELIST: raw.ADMIN_IP_WHITELIST
+    ? raw.ADMIN_IP_WHITELIST.split(',').map((s) => s.trim()).filter(Boolean)
     : ([] as string[]),
 } as const;

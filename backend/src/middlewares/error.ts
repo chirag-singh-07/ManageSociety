@@ -20,11 +20,9 @@ export function errorHandler(): ErrorRequestHandler {
 
     res.status(apiErr.status).json({
       ok: false,
-      error: {
-        code: apiErr.code,
-        message: apiErr.message,
-        details: apiErr.details,
-      },
+      code: apiErr.code,
+      message: apiErr.message,
+      details: apiErr.details,
       requestId,
     });
   };

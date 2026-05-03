@@ -81,7 +81,7 @@ export async function login(params: { email: string; password: string }) {
   const normalizedEmail = params.email.toLowerCase();
 
   // Try superadmin first (global)
-  const superadmin = await Superadmin.findOne({ email: normalizedEmail });
+  const superadmin = await Superadmin.findOne({ email: normalizedEmail }).select('+passwordHash');
   if (superadmin) {
     if (superadmin.status !== 'active') throw new ApiError(403, 'BLOCKED', 'Account blocked');
     const ok = await bcrypt.compare(params.password, superadmin.passwordHash);
@@ -94,8 +94,12 @@ export async function login(params: { email: string; password: string }) {
   }
 
   // Then tenant users
-  const user = await User.findOne({ email: normalizedEmail });
-  if (!user) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+  const users = await User.find({ email: normalizedEmail }).select('+passwordHash').limit(2);
+  if (users.length === 0) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+  if (users.length > 1) {
+    throw new ApiError(409, 'AMBIGUOUS_ACCOUNT', 'Multiple accounts exist for this email. Contact support.');
+  }
+  const user = users[0];
   if (user.status !== 'active') throw new ApiError(403, 'USER_INACTIVE', 'User not active');
   const ok = await bcrypt.compare(params.password, user.passwordHash);
   if (!ok) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
@@ -167,10 +171,10 @@ export async function changePassword(
   let user: any;
 
   if (role === 'superadmin') {
-    user = await Superadmin.findById(userId);
+    user = await Superadmin.findById(userId).select('+passwordHash');
     if (!user) throw new ApiError(404, 'NOT_FOUND', 'Superadmin not found');
   } else {
-    user = await User.findById(userId);
+    user = await User.findById(userId).select('+passwordHash');
     if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
   }
 

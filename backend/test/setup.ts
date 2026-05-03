@@ -5,8 +5,7 @@ import mongoose from 'mongoose';
 let mongod: any | null = null;
 
 beforeAll(async () => {
-  const fallbackUri =
-    process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/managesociety_test';
+  const fallbackUri = process.env.MONGODB_URI_TEST || 'mongodb://127.0.0.1:27017/managesociety_test';
 
   if (process.env.MONGODB_MEMORY_SERVER === '1') {
     const { MongoMemoryServer } = await import('mongodb-memory-server');

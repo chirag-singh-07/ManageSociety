@@ -24,6 +24,7 @@ import {
 import { writeAuditLog } from '../audit/service';
 import { maintenanceRouter } from '../maintenance/routes';
 import { notificationRouter } from '../notification/routes';
+import { parsePagination } from '../../shared/pagination';
 
 export const adminRouter = Router();
 
@@ -136,10 +137,13 @@ adminRouter.post(
 adminRouter.get(
   '/invite-codes',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const invites = await InviteCode.find({ societyId: req.tenant!.societyId })
       .sort({ createdAt: -1 })
-      .limit(200);
-    res.json({ ok: true, invites });
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    res.json({ ok: true, invites, pagination: { page, limit } });
   }),
 );
 
@@ -161,10 +165,11 @@ adminRouter.post(
 adminRouter.get(
   '/users',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     if (!mongoose.isValidObjectId(req.tenant!.societyId)) {
       throw new ApiError(400, 'TENANT_INVALID', 'Invalid societyId in auth token');
     }
-    const societyObjectId = new mongoose.Types.ObjectId(req.tenant!.societyId);
+    const societyObjectId = new mongoose.Types.ObjectId(req.tenant!.societyId!);
     const status = req.query.status as string | undefined;
     const filter: any = { 
       societyId: societyObjectId,
@@ -176,14 +181,15 @@ adminRouter.get(
     const users = await User.collection
       .find(filter)
       .sort({ createdAt: -1 })
-      .limit(200)
+      .skip(skip)
+      .limit(limit)
       .project({
         passwordHash: 0,
         __v: 0,
       })
       .toArray();
 
-    res.json({ ok: true, users: users ?? [] });
+    res.json({ ok: true, users: users ?? [], pagination: { page, limit } });
   }),
 );
 
@@ -231,7 +237,7 @@ adminRouter.post(
       userAgent: req.headers['user-agent'],
     });
 
-    res.status(201).json({ ok: true, user });
+    res.status(201).json({ ok: true, user: user.toJSON() });
   }),
 );
 
@@ -273,7 +279,7 @@ adminRouter.delete(
       _id: req.params.id,
       societyId: req.tenant!.societyId,
       role: { $ne: 'admin' },  // Prevent deleting admin accounts
-    });
+    }) as any;
     
     if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found or cannot be deleted');
 
@@ -388,7 +394,7 @@ adminRouter.delete(
     const notice = await Notice.findOneAndDelete({
       _id: req.params.id,
       societyId: req.tenant!.societyId,
-    });
+    }) as any;
     if (!notice) throw new ApiError(404, 'NOT_FOUND', 'Notice not found');
 
     await writeAuditLog({
@@ -411,11 +417,12 @@ adminRouter.delete(
 adminRouter.get(
   '/complaints',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const status = req.query.status as string | undefined;
     const filter: any = { societyId: req.tenant!.societyId };
     if (status) filter.status = status;
-    const complaints = await Complaint.find(filter).sort({ createdAt: -1 }).limit(200);
-    res.json({ ok: true, complaints });
+    const complaints = await Complaint.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json({ ok: true, complaints, pagination: { page, limit } });
   }),
 );
 
@@ -436,7 +443,7 @@ adminRouter.post(
         },
       },
       { new: true },
-    );
+    ) as any;
     if (!complaint) throw new ApiError(404, 'NOT_FOUND', 'Complaint not found');
 
     await writeAuditLog({

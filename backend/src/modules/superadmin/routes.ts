@@ -17,6 +17,7 @@ import {
 import { Superadmin } from './model';
 import { writeAuditLog } from '../audit/service';
 import { ApiError } from '../../shared/apiError';
+import { parsePagination } from '../../shared/pagination';
 
 export const superadminRouter = Router();
 
@@ -64,9 +65,10 @@ superadminRouter.post(
 
 superadminRouter.get(
   '/societies',
-  asyncHandler(async (_req, res) => {
-    const societies = await Society.find({}).sort({ createdAt: -1 }).limit(200);
-    res.json({ ok: true, societies });
+  asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
+    const societies = await Society.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json({ ok: true, societies, pagination: { page, limit } });
   }),
 );
 
@@ -97,8 +99,7 @@ superadminRouter.patch(
 superadminRouter.get(
   '/users',
   asyncHandler(async (req, res) => {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const search = (req.query.search as string) || '';
 
     const query: any = {};
@@ -114,7 +115,7 @@ superadminRouter.get(
         .populate('societyId', 'name')
         .sort({ createdAt: -1 })
         .limit(limit)
-        .skip((page - 1) * limit)
+        .skip(skip)
         .lean(),
       User.countDocuments(query),
     ]);
@@ -171,7 +172,7 @@ superadminRouter.post(
       userAgent: req.headers['user-agent'],
     });
 
-    res.status(201).json({ ok: true, user });
+    res.status(201).json({ ok: true, user: user.toJSON() });
   }),
 );
 
@@ -363,7 +364,7 @@ superadminRouter.get(
 superadminRouter.get(
   '/me',
   asyncHandler(async (req, res) => {
-    const admin = await Superadmin.findById(req.tenant!.userId);
+    const admin = await Superadmin.findById(req.tenant!.userId).select('+passwordHash');
     if (!admin) throw new ApiError(404, 'NOT_FOUND', 'Admin not found');
     res.json({ ok: true, admin: { id: admin._id, email: admin.email, role: 'superadmin' } });
   }),

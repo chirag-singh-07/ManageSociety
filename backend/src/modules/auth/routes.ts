@@ -17,9 +17,18 @@ export const authRouter = Router();
 
 const authLimiter = rateLimit({
   windowMs: 60_000,
-  max: 30,
+  max: env.AUTH_RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  max: env.LOGIN_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`,
 });
 
 authRouter.post(
@@ -53,7 +62,7 @@ authRouter.post(
 
 authRouter.post(
   '/login',
-  authLimiter,
+  loginLimiter,
   asyncHandler(async (req, res) => {
     const input = loginSchema.parse(req.body);
     const tokens = await login(input);

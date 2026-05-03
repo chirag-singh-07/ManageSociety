@@ -12,6 +12,7 @@ import { MaintenanceBill } from '../maintenance/model';
 import { addCommentSchema, createComplaintSchema, presignSchema, updateMeSchema } from './validators';
 import { createPresign } from '../files/presign';
 import { FileMeta } from '../files/model';
+import { parsePagination } from '../../shared/pagination';
 
 export const tenantRouter = Router();
 
@@ -20,7 +21,7 @@ tenantRouter.use(requireAuth(), requireSocietyTenant());
 tenantRouter.get(
   '/me',
   asyncHandler(async (req, res) => {
-    const user = await User.findOne({ _id: req.tenant!.userId, societyId: req.tenant!.societyId });
+    const user = await User.findOne({ _id: req.tenant!.userId, societyId: req.tenant!.societyId }).lean();
     if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
     res.json({ ok: true, user });
   }),
@@ -44,10 +45,13 @@ tenantRouter.patch(
 tenantRouter.get(
   '/notices',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const notices = await Notice.find({ societyId: req.tenant!.societyId })
       .sort({ publishedAt: -1 })
-      .limit(100);
-    res.json({ ok: true, notices });
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    res.json({ ok: true, notices, pagination: { page, limit } });
   }),
 );
 
@@ -83,12 +87,13 @@ tenantRouter.post(
 tenantRouter.get(
   '/complaints',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const filter: any = { societyId: req.tenant!.societyId };
     if (req.tenant!.role === 'user') {
       filter.createdBy = req.tenant!.userId;
     }
-    const complaints = await Complaint.find(filter).sort({ createdAt: -1 }).limit(200);
-    res.json({ ok: true, complaints });
+    const complaints = await Complaint.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json({ ok: true, complaints, pagination: { page, limit } });
   }),
 );
 
@@ -103,7 +108,8 @@ tenantRouter.get(
     }
     const comments = await Comment.find({ societyId: req.tenant!.societyId, complaintId: complaint._id })
       .sort({ createdAt: 1 })
-      .limit(500);
+      .limit(200)
+      .lean();
     res.json({ ok: true, complaint, comments });
   }),
 );
@@ -167,6 +173,7 @@ tenantRouter.post(
 tenantRouter.get(
   '/maintenance/bills',
   asyncHandler(async (req, res) => {
+    const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const status = req.query.status as string | undefined;
     const period = req.query.period as string | undefined;
 
@@ -182,7 +189,11 @@ tenantRouter.get(
     if (status) filter.status = status;
     if (period) filter.period = period;
 
-    const bills = await MaintenanceBill.find(filter).sort({ period: -1, createdAt: -1 }).limit(200);
-    res.json({ ok: true, bills });
+    const bills = await MaintenanceBill.find(filter)
+      .sort({ period: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+    res.json({ ok: true, bills, pagination: { page, limit } });
   }),
 );

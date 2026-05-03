@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { baseSchemaFields, withTimestamps } from '../_db/base';
+import { applySafeJsonTransform } from '../_db/transforms';
 
 export type UserRole = 'user' | 'admin';
 export type UserStatus = 'pending' | 'active' | 'blocked';
@@ -35,7 +36,7 @@ const userSchema = new Schema<UserDoc>(
     email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, default: '' },
     flatNumber: { type: String, default: '' },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, required: true, select: false },
     flatId: { type: Schema.Types.ObjectId, default: null },
     ...baseSchemaFields,
   },
@@ -43,7 +44,8 @@ const userSchema = new Schema<UserDoc>(
 );
 
 userSchema.index({ societyId: 1, email: 1 }, { unique: true });
+userSchema.index({ email: 1, status: 1 });
 withTimestamps(userSchema);
+applySafeJsonTransform(userSchema, ['passwordHash']);
 
 export const User = mongoose.models.User || mongoose.model<UserDoc>('User', userSchema);
-

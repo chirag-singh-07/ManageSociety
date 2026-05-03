@@ -46,8 +46,7 @@ maintenanceRouter.post(
       { societyId: req.tenant!.societyId },
       { order: 1 },
     )
-      .sort({ order: -1 })
-      .lean();
+      .sort({ order: -1 });
 
     const charge = await MaintenanceCharge.create({
       societyId: req.tenant!.societyId,
@@ -116,7 +115,7 @@ maintenanceRouter.delete(
     const charge = await MaintenanceCharge.findOneAndDelete({
       _id: req.params.id,
       societyId: req.tenant!.societyId,
-    });
+    }) as any;
 
     if (!charge) throw new ApiError(404, 'NOT_FOUND', 'Charge not found');
 
@@ -422,7 +421,7 @@ maintenanceRouter.delete(
     const bill = await MaintenanceBill.findOneAndDelete({
       _id: req.params.id,
       societyId: req.tenant!.societyId,
-    });
+    }) as any;
 
     if (!bill) throw new ApiError(404, 'NOT_FOUND', 'Bill not found');
 
