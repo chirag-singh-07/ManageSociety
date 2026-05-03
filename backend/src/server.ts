@@ -3,10 +3,15 @@ import { connectDb, disconnectDb } from './config/db';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { createApp } from './app';
+import { startKeepAlive } from './scripts/KeepAlive';
+import { startMongoKeepAlive } from './scripts/mongoKeepAlive';
+
 
 async function main() {
   await connectDb();
-
+ // Start keep-alive jobs after DB is confirmed connected
+  startMongoKeepAlive();
+  startKeepAlive();
   const app = createApp();
   const server = createServer(app);
 

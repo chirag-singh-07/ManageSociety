@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
-const https = require('https');
-const http = require('http');
+
+
+import https from "https";
+import http from "http";
 
 function request(url) {
   return new Promise((resolve, reject) => {
