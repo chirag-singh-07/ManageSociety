@@ -258,24 +258,43 @@ export interface Complaint {
   title: string
   description: string
   category: string
-  priority: 'low' | 'medium' | 'high'
-  status: 'open' | 'assigned' | 'in-progress' | 'resolved' | 'closed'
-  createdBy: {
-    _id: string
-    name: string
-    email: string
-  }
-  assignedTo?: {
-    _id: string
-    name: string
-  }
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  status: 'open' | 'assigned' | 'in-progress' | 'in_progress' | 'resolved' | 'closed' | 'rejected'
+  createdBy:
+    | string
+    | {
+        _id: string
+        name?: string
+        email?: string
+      }
+  assignedTo?:
+    | string
+    | {
+        _id: string
+        name?: string
+      }
+  memberId?: string
+  flatNumber?: string
   attachments?: Array<{
-    fileId: string
-    publicUrl: string
-    fileName: string
+    fileId?: string
+    publicUrl?: string
+    url?: string
+    fileName?: string
+    name?: string
+    type?: string
   }>
   createdAt: string
   updatedAt: string
+}
+
+export interface ComplaintComment {
+  _id: string
+  message: string
+  author?: {
+    name?: string
+  }
+  createdAt: string
+  type?: 'admin' | 'system'
 }
 
 export interface ComplaintResponse {
@@ -289,8 +308,8 @@ export async function getComplaints(status?: string): Promise<ComplaintResponse>
   return fetchJSON<ComplaintResponse>('GET', `/api/admin/complaints${query}`)
 }
 
-export async function getComplaint(id: string): Promise<{ ok: boolean; complaint: Complaint; comments?: Array<{ _id: string; message: string; author: { name: string }; createdAt: string }> }> {
-  return fetchJSON<{ ok: boolean; complaint: Complaint; comments?: Array<{ _id: string; message: string; author: { name: string }; createdAt: string }> }>('GET', `/api/complaints/${id}`)
+export async function getComplaint(id: string): Promise<{ ok: boolean; complaint: Complaint; comments?: ComplaintComment[] }> {
+  return fetchJSON<{ ok: boolean; complaint: Complaint; comments?: ComplaintComment[] }>('GET', `/api/complaints/${id}`)
 }
 
 export async function updateComplaintStatus(id: string, status: string, message?: string): Promise<ComplaintResponse> {
@@ -578,6 +597,8 @@ export async function uploadFile(uploadUrl: string, file: File): Promise<void> {
 export interface Society {
   _id: string
   name: string
+  address?: string
+  registrationNumber?: string
   location?: string
   settings?: Record<string, unknown>
 }

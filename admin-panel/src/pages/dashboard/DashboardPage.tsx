@@ -48,7 +48,7 @@ export function DashboardPage() {
     if (token) {
       const decoded = decodeJwt(token);
       if (decoded?.name) {
-        setUserName(decoded?.name);
+        setUserName(String(decoded.name));
       }
     }
     fetchDashboard();

@@ -8,7 +8,6 @@ import {
   Tag, 
   Send,
   MoreVertical,
-  ChevronRight,
   CheckCircle2,
   AlertCircle,
   Paperclip,
@@ -18,15 +17,20 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
-import { getComplaint, updateComplaintStatus, addComplaintComment } from '../../api/http'
-import type { Complaint, Comment } from '../../api/types'
+import {
+  getComplaint,
+  updateComplaintStatus,
+  addComplaintComment,
+  type Complaint,
+  type ComplaintComment,
+} from '../../api/http'
 
 export function ComplaintDetails() {
   const navigate = useNavigate()
   const { id } = useParams()
   const [status, setStatus] = useState('open')
   const [complaint, setComplaint] = useState<Complaint | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
+  const [comments, setComments] = useState<ComplaintComment[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [comment, setComment] = useState('')
@@ -52,7 +56,7 @@ export function ComplaintDetails() {
     }
   }
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: Complaint['status']) => {
     if (!complaint || !id) return
     
     try {
@@ -104,6 +108,12 @@ export function ComplaintDetails() {
     )
   }
 
+  const reportedBy =
+    typeof complaint.createdBy === 'object' && complaint.createdBy !== null
+      ? complaint.createdBy.name || complaint.createdBy._id
+      : complaint.memberId || complaint.createdBy
+  const visibleAttachments = complaint.attachments ?? []
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -124,7 +134,7 @@ export function ComplaintDetails() {
                   {complaint.priority} Priority
                </span>
             </div>
-            <p className="text-muted-foreground mt-1">Reported by {complaint.memberId} • {new Date(complaint.createdAt).toLocaleDateString()}</p>
+            <p className="text-muted-foreground mt-1">Reported by {reportedBy} on {new Date(complaint.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
         
@@ -132,7 +142,7 @@ export function ComplaintDetails() {
            <select 
              className="bg-secondary text-foreground text-xs font-bold px-4 py-3 rounded-xl border-none focus:ring-2 focus:ring-primary/20 appearance-none min-w-[140px]"
              value={status}
-             onChange={(e) => handleStatusChange(e.target.value)}
+             onChange={(e) => handleStatusChange(e.target.value as Complaint['status'])}
            >
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -157,17 +167,17 @@ export function ComplaintDetails() {
                  {complaint.description}
               </p>
               
-              {complaint.attachments && complaint.attachments.length > 0 && (
+              {visibleAttachments.length > 0 && (
                 <div className="flex items-center gap-3">
-                   {complaint.attachments.slice(0, 2).map((attachment, idx) => (
-                     <a key={idx} href={attachment} target="_blank" rel="noopener noreferrer" className="w-20 h-20 rounded-xl bg-secondary border border-border flex items-center justify-center hover:bg-primary/10 transition-all">
+                   {visibleAttachments.slice(0, 2).map((attachment, idx) => (
+                     <a key={attachment.fileId || attachment.publicUrl || attachment.url || idx} href={attachment.publicUrl || attachment.url || '#'} target="_blank" rel="noopener noreferrer" className="w-20 h-20 rounded-xl bg-secondary border border-border flex items-center justify-center hover:bg-primary/10 transition-all">
                         <Paperclip className="w-6 h-6 text-muted-foreground" />
                      </a>
                    ))}
-                   {complaint.attachments.length > 2 && (
+                   {visibleAttachments.length > 2 && (
                      <div className="text-xs text-muted-foreground flex items-center gap-2 ml-2">
                         <CheckCircle2 className="w-4 h-4 text-success" />
-                        {complaint.attachments.length} Files Attached
+                        {visibleAttachments.length} Files Attached
                      </div>
                    )}
                 </div>
@@ -226,13 +236,13 @@ export function ComplaintDetails() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                        <User className="w-4 h-4" /> Reported by
                     </div>
-                    <span className="text-xs font-bold text-foreground underline">{complaint.memberId}</span>
+                    <span className="text-xs font-bold text-foreground underline">{reportedBy}</span>
                  </div>
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                        <Building className="w-4 h-4" /> Flat
                     </div>
-                    <span className="text-xs font-bold text-foreground">{complaint.flatNumber}</span>
+                    <span className="text-xs font-bold text-foreground">{complaint.flatNumber || 'N/A'}</span>
                  </div>
                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

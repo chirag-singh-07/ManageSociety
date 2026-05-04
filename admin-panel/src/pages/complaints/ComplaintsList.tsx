@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
-import { getComplaints } from "../../api/http";
-import type { Complaint } from "../../api/types";
+import { getComplaints, type Complaint } from "../../api/http";
 
 export function ComplaintsList() {
   const [activeTab, setActiveTab] = useState("all");

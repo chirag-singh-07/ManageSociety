@@ -104,7 +104,7 @@ export function NoticesList() {
               <p className="font-bold text-sm">Latest Updates</p>
               <p className="text-xs text-muted-foreground">
                 {notices.length > 0
-                  ? `Last updated ${new Date(notices[0]?.createdAt).toLocaleDateString()}`
+                  ? `Last updated ${notices[0]?.createdAt ? new Date(notices[0].createdAt).toLocaleDateString() : "recently"}`
                   : "No notices published yet"}
               </p>
             </div>
@@ -129,7 +129,7 @@ export function NoticesList() {
             </div>
           ) : (
             notices.map((notice) => {
-              const createdDate = new Date(notice.createdAt);
+              const createdDate = notice.createdAt ? new Date(notice.createdAt) : null;
               return (
                 <div
                   key={notice._id}
@@ -162,7 +162,7 @@ export function NoticesList() {
                           <Calendar className="w-4 h-4" />
                           Posted:{" "}
                           <span className="font-semibold text-foreground">
-                            {createdDate.toLocaleDateString()}
+                            {createdDate ? createdDate.toLocaleDateString() : "Unknown"}
                           </span>
                         </div>
                         {notice.createdBy && (

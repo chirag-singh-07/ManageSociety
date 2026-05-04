@@ -15,8 +15,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
-import { getSociety, updateSociety } from '../../api/http'
-import type { Society } from '../../api/types'
+import { getSociety, updateSociety, type Society } from '../../api/http'
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
@@ -37,6 +36,9 @@ export function SettingsPage() {
     try {
       setLoading(true)
       const data = await getSociety()
+      if (!data.society) {
+        throw new Error('Society not found')
+      }
       setSociety(data.society)
       setFormData({
         name: data.society.name || '',
