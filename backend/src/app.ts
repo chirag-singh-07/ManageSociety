@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Request } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -33,12 +34,15 @@ export function createApp() {
       // pino-http / pino type versions can drift; runtime is compatible.
       logger: logger as any,
       genReqId: (req) => (req as any).id,
-      customProps: (req) => ({
+      customProps: (req) => {
+        const request = req as Request;
+        return {
         requestId: (req as any).id,
-        societyId: req.tenant?.societyId,
-        userId: req.tenant?.userId,
-        role: req.tenant?.role,
-      }),
+        societyId: request.tenant?.societyId,
+        userId: request.tenant?.userId,
+        role: request.tenant?.role,
+        };
+      },
       customLogLevel: (_req, res, err) => {
         if (err || res.statusCode >= 500) return 'error';
         if (res.statusCode >= 400) return 'warn';
